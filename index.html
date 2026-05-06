@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Simulador SO - Gestion de Procesos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #0a0c15;
+    --bg-panel: #111827;
+    --bg-card: #1f2937;
+    --fg: #e2e8f0;
+    --fg-muted: #9ca3af;
+    --accent: #38bdf8;
+    --accent-dark: #0284c7;
+    --success: #10b981;
+    --danger: hsl(0, 84%, 60%);
+    --warn: #f59e0b;
+    --border: #374151;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    overflow: hidden;
+    height: 100vh;
+}
+
+.dashboard {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 200px;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(4px);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--fg);
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-header {
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+
+.menu-item {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+}
+
+.menu-item.active {
+    background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(139,92,246,0.1));
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+}
+
+.menu-item:hover:not(.active) {
+    background: rgba(255,255,255,0.05);
+    color: var(--fg);
+}
+
+/* MAIN: DOS COLUMNAS */
+.main {
+    flex: 1;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* COLUMNA IZQUIERDA: Simulación + Tabla */
+.col-left {
+    flex: 1.6;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* COLUMNA DERECHA: Agregar procesos */
+.col-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.3px;
+    flex-shrink: 0;
+}
+
+.form-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--bg-panel);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.form-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.input-group input {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: var(--fg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+}
+
+.input-group label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    color: var(--fg-muted);
+    margin-bottom: 6px;
+}
+
+.input-group input {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: var(--fg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(56,189,248,0.2);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border: none;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    height: 34px;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: scale(0.98);
+}
+
+.legend {
+    background: rgba(31,41,55,0.6);
+    border-radius: 16px;
+    padding: 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+    margin-top: 16px;
+    flex-shrink: 0;
+}
+
+.legend span {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.state-diagram {
+    background: #0f172a;
+    border-radius: 32px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    flex: 1;
+    min-height: 0;
+}
+
+.stats-panel {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    min-height: 140px;
+}
+
+.stat-card {
+    background: linear-gradient(145deg, #1a2538, #111827);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-label {
+    font-size: 0.65rem;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+.diagram-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--fg-muted);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.state-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+}
+
+.state-card {
+    background: linear-gradient(145deg, #1a2538, #111827);
+    border-radius: 28px;
+    padding: 16px 12px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    border: 1px solid rgba(56,189,248,0.2);
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+}
+
+.state-card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+}
+
+.state-card.new h3 { color: #6b7280; }
+.state-card.ready h3 { color: #3b82f6; }
+.state-card.running h3 { color: var(--success); }
+.state-card.waiting h3 { color: var(--warn); }
+.state-card.terminated h3 { color: var(--danger); }
+
+.process-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    overflow-y: auto;
+    max-height: 150px;
+}
+
+.process-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+
+}
+
+.process-list::-webkit-scrollbar {
+    width: 4px;
+}
+.process-list::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.process-badge {
+    background: rgba(0,0,0,0.5);
+    border-radius: 40px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+    border-left: 2px solid;
+}
+
+.process-badge.running-pulse {
+    animation: pulse-green 1s ease-in-out infinite;
+}
+
+.process-badge.terminated-pulse {
+    background: rgba(239, 68, 68, 0.4);
+    border-left-color: #ef4444;
+}
+
+.process-badge.waiting-pulse {
+    animation: pulse-yellow 1s ease-in-out infinite;
+}
+
+.process-badge.ready-pulse {
+    animation: pulse-blue 1s ease-in-out infinite;
+}
+
+.process-badge.new-pulse {
+    animation: pulse-gray 1s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { background: rgba(16, 185, 129, 0.3); border-left-color: #10b981; }
+    50% { background: rgba(16, 185, 129, 0.8); border-left-color: #10b981; transform: scale(1.02); }
+}
+
+@keyframes pulse-yellow {
+    0%, 100% { background: rgba(245, 158, 11, 0.3); border-left-color: #f59e0b; }
+    50% { background: rgba(245, 158, 11, 0.8); border-left-color: #f59e0b; transform: scale(1.02); }
+}
+
+@keyframes pulse-blue {
+    0%, 100% { background: rgba(59, 130, 246, 0.3); border-left-color: #3b82f6; }
+    50% { background: rgba(59, 130, 246, 0.8); border-left-color: #3b82f6; transform: scale(1.02); }
+}
+
+@keyframes pulse-gray {
+    0%, 100% { background: rgba(107, 114, 128, 0.3); border-left-color: #6b7280; }
+    50% { background: rgba(107, 114, 128, 0.7); border-left-color: #6b7280; transform: scale(1.02); }
+}
+
+.process-badge .pid { font-weight: 700; }
+.process-badge .details { font-size: 0.65rem; opacity: 0.8; }
+
+.cpu-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-radius: 20px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 5px solid var(--success);
+    font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
+}
+
+.cpu-label {
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.cpu-status {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--success);
+}
+
+/* Contenedor de la tabla con scroll interno */
+.table-wrapper {
+    flex: 1;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    overflow-y: auto;
+    
+}
+
+.table-card {
+    background: var(--bg-panel);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.results-table th {
+    text-align: left;
+    padding: 12px 10px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    font-size: 0.6rem;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    background: #1f2937;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.results-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.results-table tr:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+.control-bar {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-start;
+    flex-shrink: 0;
+    padding-bottom: 20px;
+    
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--fg);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+}
+
+.btn-secondary:hover {
+    background: rgba(56,189,248,0.1);
+    border-color: var(--accent);
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 40px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.two-columns {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.status-new { background: #6b7280; color: white; }
+.status-ready { background: #3b82f6; color: white; }
+.status-running { background: #10b981; color: white; animation: statusPulse 0.8s infinite; }
+.status-waiting { background: #f59e0b; color: white; }
+.status-terminated { background: #ef4444; color: white; }
+
+.process-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
+.hw-title { font-size: 0.75rem; font-weight: 600; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+
+
+.hw-box {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 15px; display: flex; flex-direction: column; align-items: center;
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; box-shadow: 0 0 0 3px rgba(16,185,129,0.3); }
+}
+
+.menu-item {
+    display: block; /* 🔥 clave para que se comporte como div */
+    text-decoration: none; /* quitar subrayado */
+}
+
+/* alertas */
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    animation: slideIn 0.3s ease-out;
+    z-index: 1000;
+}
+
+.alert-success { background: #10b981; color: white; }
+.alert-error { background: #ef4444; color: white; }
+.alert-info { background: #3b82f6; color: white; }
+
+.file-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    
+}
+
+
+
+/* ocultar input original */
+.file-upload input[type="file"] {
+    display: none;
+}
+
+.file-row {
+    width: 100%;
+    display: block;
+    margin-bottom: 20px
+}
+
+/* botón bonito */
+.file-label {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--fg);
+    transition: all 0.2s;
+    font-weight: 600;
+    
+}
+
+.file-label:hover {
+    border-color: var(--accent);
+    background: rgba(56,189,248,0.1);
+}
+
+/* nombre del archivo (opcional si quieres luego) */
+.file-upload span {
+    font-size: 0.7rem;
+    color: var(--fg-muted);
+}
+
+/* Metrics Panel */
+.metrics-panel {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.metric-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: center;
+    border-left: 3px solid var(--accent);
+}
+
+.metric-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.metric-label {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+}
+
+/* Pie Chart Container */
+.pie-container {
+    background: #0f172a;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    margin-top: 12px;
+}
+
+.pie-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.pie-chart-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.pie-svg {
+    width: 180px;
+    height: 180px;
+    transform: rotate(-90deg);
+}
+
+.pie-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pie-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+}
+
+.pie-color-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+}
+
+.pie-color-box.new { background: #6b7280; }
+.pie-color-box.ready { background: #3b82f6; }
+.pie-color-box.running { background: #10b981; }
+.pie-color-box.waiting { background: #f59e0b; }
+.pie-color-box.terminated { background: #ef4444; }
+
+.pie-percent {
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.btn-export {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.btn-export:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            OS Visual Lab
+        </div>
+        <a class="menu-item active" href="index.html">Processes</a>
+        <a class="menu-item" href="scheduling.html">Scheduling</a>
+        <a class="menu-item" href="paginacion.html">Paging</a>
+        <a class="menu-item" href="replacement.html">Replacement</a>
+        <a class="menu-item" href="threads.html">Threads</a>
+        <a class="menu-item" href="multicore.html">Multi-Core</a>
+    </div>
+
+    <div class="main">
+         <h2>Process States</h2>
+        <div class="metrics-panel">
+    <div class="metric-card">
+        <div class="metric-value" id="metricTotal">0</div>
+        <div class="metric-label">Total Processes</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="metricAvgTurnaround">—</div>
+        <div class="metric-label">Avg Turnaround</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="metricThroughput">—</div>
+        <div class="metric-label">Throughput (proc/ms)</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value" id="metricCpuUsage">0%</div>
+        <div class="metric-label">CPU Usage</div>
+    </div>
+</div>
+        <div class="two-columns">
+            <div class="col-left">
+                
+                <div class="state-diagram">
+                    <div class="hw-title">State Diagram</div>
+                    <div class="diagram-title">LIVE TRANSITIONS</div>
+                    <div class="state-container" id="statesGrid"></div>
+                </div>
+
+                <div class="cpu-card" id="cpuCard">
+                    <span class="cpu-label">CPU (Core 0)</span>
+                    <span class="cpu-status" id="cpuStatus">Free</span>
+                </div>
+
+                <div class="table-card">
+                    <div class="hw-title">Process Table</div>
+                    <div class="table-wrapper">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>PID</th>
+                                    <th>Arrival</th>
+                                    <th>Burst</th>
+                                    <th>Remaining</th>
+                                    <th>Priority</th>
+                                    <th>Pages</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="processTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align:center; color:var(--fg-muted); padding: 30px;">
+                                        No processes
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-right">
+                <div class="form-card">
+                    <div class="form-grid">
+                        <div class="hw-title">Process Configuration</div>
+                        
+                        <div class="process-controls">
+                            <div class="control-bar">
+                                <button class="btn-primary" onclick="addProcess()">Add</button>
+                                <button class="btn-secondary" onclick="addRandomProcess()">Add Random Process</button>
+                                <button class="btn-secondary" onclick="resetSimulation()">Reset</button>
+                                <button class="btn-secondary" onclick="exportToCSV()">Export CSV</button>
+                            </div>
+                             <div class="file-row">
+                                <div class="file-upload">
+                                    <label for="fileInput" class="file-label">📄 Load Processes From TXT File</label>
+                                    <input type="file" id="fileInput" accept=".txt" onchange="loadProcessesFromFile(event)">
+                                </div>
+                            </div>
+                            
+
+
+                            <div class="input-group">
+                                <label>PID</label>
+                                <input type="text" id="pid" placeholder="Ex: 101" value="P5">
+                            </div>
+
+                            <div class="input-group">
+                                <label>Arrival Time (ms)</label>
+                                <input type="number" id="arrival" placeholder="Arrival time" value="0">
+                            </div>
+
+                            <div class="input-group">
+                                <label>Burst Time (ms)</label>
+                                <input type="number" id="burst" placeholder="CPU burst" value="5">
+                            </div>
+
+                            <div class="input-group">
+                                <label>Priority (1 = High)</label>
+                                <input type="number" id="priority" placeholder="Priority" value="2">
+                            </div>
+
+                            <div class="input-group">
+                                <label>Number of Pages</label>
+                                <input type="number" id="pages" placeholder="Pages" value="3">
+                            </div>
+
+                            
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="legend">
+                        <div><span>Arrival:</span> Time when the process enters the system (NEW → READY)</div>
+                        <div><span>Burst:</span> Total CPU execution time needed by the process</div>
+                        <div><span>Priority:</span> Lower number = higher priority (1 is highest)</div>
+                        <div><span>Pages:</span> Number of virtual memory pages allocated to the process</div>
+                        <div><span>Remaining:</span> CPU time still needed to complete execution</div>
+                        <div><span>Turnaround Time (TAT):</span> Completion Time - Arrival Time. Measures how long a process waits to finish after entering the system. Lower TAT means better responsiveness.</div>
+                        <div><span>Throughput:</span> Number of processes completed per time unit (processes/ms). Higher throughput = better system efficiency.</div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let processes = [];
+let globalTime = 0;
+let currentCpuProcess = null;
+let intervalId = null;
+let simulationRunning = true;
+
+function showAlert(message, type = "info") {
+    const alert = document.createElement("div");
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+
+    document.body.appendChild(alert);
+
+    setTimeout(() => {
+        alert.remove();
+    }, 2000);
+}
+
+// NUEVA VERSIÓN DE CARGA DE ARCHIVO - SIN FETCH
+function loadProcessesFromFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split("\n");
+
+        let added = 0;
+        let errors = 0;
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            const parts = line.split(",");
+
+            if (parts.length !== 5) {
+                errors++;
+                continue;
+            }
+
+            let [pid, arrival, burst, priority, pages] = parts;
+
+            pid = pid.trim();
+            arrival = parseInt(arrival);
+            burst = parseInt(burst);
+            priority = parseInt(priority);
+            pages = parseInt(pages);
+
+            if (!pid || processes.some(p => p.pid === pid)) {
+                errors++;
+                continue;
+            }
+
+            if (isNaN(arrival) || isNaN(burst) || isNaN(priority) || isNaN(pages)) {
+                errors++;
+                continue;
+            }
+
+            // 🔥 SIMULACIÓN: Crear proceso directamente sin fetch
+            let newProc = {
+                pid,
+                arrival,
+                burst,
+                remaining: burst,
+                priority,
+                pages,
+                state: "new"
+            };
+
+            processes.push(newProc);
+            added++;
+        }
+
+        renderAll();
+
+        if (added > 0) {
+            showAlert(`${added} processes created from file (simulated)`, "success");
+        }
+
+        if (errors > 0) {
+            showAlert(`${errors} lines failed`, "error");
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+// NUEVA VERSIÓN - SIN FETCH
+function addProcess() {
+    let pid = document.getElementById("pid").value.trim();
+    let arrival = parseInt(document.getElementById("arrival").value);
+    let burst = parseInt(document.getElementById("burst").value);
+    let priority = parseInt(document.getElementById("priority").value);
+    let pages = parseInt(document.getElementById("pages").value);
+
+    if (!pid) {
+        showAlert("Enter a PID", "error");
+        return;
+    }
+
+    if (processes.some(p => p.pid === pid)) {
+        showAlert("PID already exists", "error");
+        return;
+    }
+
+    if (isNaN(arrival) || isNaN(burst) || isNaN(priority) || isNaN(pages)) {
+        showAlert("Invalid input values", "error");
+        return;
+    }
+
+    // 🔥 SIMULACIÓN: Crear proceso directamente sin backend
+    let newProc = {
+        pid: pid,
+        arrival: arrival,
+        burst: burst,
+        remaining: burst,
+        priority: priority,
+        pages: pages,
+        state: "new"
+    };
+
+    processes.push(newProc);
+    renderAll();
+
+    showAlert(`Process ${pid} created successfully (simulated)`, "success");
+}
+
+function getNextReadyProcess() {
+    let readyList = processes.filter(p => p.state === "ready");
+    if (readyList.length === 0) return null;
+    readyList.sort((a,b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.arrival - b.arrival;
+    });
+    return readyList[0];
+}
+
+function tick() {
+    if (!simulationRunning) return;
+    globalTime++;
+
+    processes.forEach(p => {
+        if (p.state === "new" && p.arrival <= globalTime) {
+            p.state = "ready";
+        }
+    });
+
+    if (currentCpuProcess === null) {
+        let next = getNextReadyProcess();
+        if (next) {
+            next.state = "running";
+            currentCpuProcess = next;
+        }
+    }
+
+    if (currentCpuProcess) {
+        if (currentCpuProcess.state !== "running") {
+            currentCpuProcess = null;
+        } else {
+            currentCpuProcess.remaining--;
+            document.getElementById("cpuStatus").innerHTML =
+`           Running ${currentCpuProcess.pid} (remaining: ${currentCpuProcess.remaining}) | Priority: ${currentCpuProcess.priority}`;
+
+            let randomBlock = Math.random() < 0.2;
+            if (currentCpuProcess.remaining <= 0) {
+                currentCpuProcess.state = "terminated";
+                currentCpuProcess.remaining = 0;
+                currentCpuProcess = null;
+            } 
+            else if (randomBlock && currentCpuProcess.state === "running") {
+                currentCpuProcess.state = "waiting";
+                currentCpuProcess.waitCounter = 0;
+                currentCpuProcess = null;
+            }
+        }
+    } 
+    
+    if (currentCpuProcess === null) {
+        document.getElementById("cpuStatus").innerHTML = "Free (idle)";
+    }
+
+    processes.forEach(p => {
+        if (p.state === "waiting") {
+            if (!p.waitCounter) p.waitCounter = 0;
+            p.waitCounter++;
+            if (p.waitCounter >= 2 || Math.random() < 0.35) {
+                p.state = "ready";
+                delete p.waitCounter;
+            }
+        }
+    });
+
+    if (currentCpuProcess === null) {
+        let next = getNextReadyProcess();
+        if (next) {
+            next.state = "running";
+            currentCpuProcess = next;
+        }
+    }
+
+    renderAll();
+}
+
+function renderAll() {
+    const states = ["new", "ready", "running", "waiting", "terminated"];
+    const stateNames = {
+        new: "NEW", ready: "READY", running: "RUNNING", waiting: "WAITING", terminated: "TERMINATED"
+    };
+    const stateColors = {
+        new: "new", ready: "ready", running: "running", waiting: "waiting", terminated: "terminated"
+    };
+    
+    const container = document.getElementById("statesGrid");
+    if (container) {
+        container.innerHTML = "";
+        states.forEach(stateKey => {
+            const procsInState = processes.filter(p => p.state === stateKey);
+            const card = document.createElement("div");
+            card.className = `state-card ${stateColors[stateKey]}`;
+            card.innerHTML = `
+                <h3>${stateNames[stateKey]}</h3>
+                <div class="process-list" id="state-${stateKey}">
+                    ${procsInState.map(p => {
+                        let pulseClass = "";
+                        if (p.state === "running") pulseClass = "running-pulse";
+                        else if (p.state === "terminated") pulseClass = "terminated-pulse";
+                        else if (p.state === "waiting") pulseClass = "waiting-pulse";
+                        else if (p.state === "ready") pulseClass = "ready-pulse";
+                        else if (p.state === "new") pulseClass = "new-pulse";
+                        return `
+                            <div class="process-badge ${pulseClass}" style="border-left-color: ${p.state === 'running' ? '#10b981' : p.state === 'terminated' ? '#ef4444' : p.state === 'waiting' ? '#f59e0b' : p.state === 'ready' ? '#3b82f6' : '#6b7280'}">
+                                <span class="pid">${p.pid}</span>
+                                <span class="details">Prio:${p.priority} | ${p.remaining}/${p.burst}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                    ${procsInState.length === 0 ? '<span style="font-size:0.7rem; opacity:0.5;">empty</span>' : ''}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+    
+    const tbody = document.getElementById("processTableBody");
+    if (processes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No processes</td></tr>';
+    } else {
+        tbody.innerHTML = processes.map(p => `
+            <tr>
+                <td><strong>${p.pid}</strong></td>
+                <td>${p.arrival}</td>
+                <td>${p.burst}</td>
+                <td>${p.remaining}</td>
+                <td>${p.priority}</td>
+                <td>${p.pages}</td>
+                <td><span class="status-badge status-${p.state}">${p.state.toUpperCase()}</span></td>
+            </tr>
+        `).join('');
+    }
+    
+    if (currentCpuProcess) {
+        document.getElementById("cpuStatus").innerHTML =
+        `Running ${currentCpuProcess.pid} (remaining: ${currentCpuProcess.remaining}) | Priority: ${currentCpuProcess.priority}`;
+
+    } else {
+        document.getElementById("cpuStatus").innerHTML = "Free - Waiting for processes";
+    }
+}
+
+function resetSimulation() {
+    processes = [];
+    currentCpuProcess = null;
+    globalTime = 0;
+    simulationRunning = true;
+    renderAll();
+    document.getElementById("cpuStatus").innerHTML = "Free";
+
+    showAlert("Simulation reset", "info");
+
+}
+
+function addRandomProcess() {
+    let basePid = "P" + (Math.floor(Math.random() * 900) + 100);
+    let counter = 1;
+    while (processes.some(p => p.pid === basePid)) {
+        basePid = "P" + (Math.floor(Math.random() * 900) + 100) + counter;
+        counter++;
+    }
+    let arrival = Math.floor(Math.random() * 8);
+    let burst = Math.floor(Math.random() * 7) + 2;
+    let priority = Math.floor(Math.random() * 5) + 1;
+    let pages = Math.floor(Math.random() * 6) + 1;
+    
+    let newProc = {
+        pid: basePid,
+        arrival: arrival,
+        burst: burst,
+        remaining: burst,
+        priority: priority,
+        pages: pages,
+        state: "new"
+    };
+    processes.push(newProc);
+    renderAll();
+
+     showAlert(`Random process ${newProc.pid} added`, "success");
+}
+
+function initDemoProcesses() {
+    processes = [];
+    const demo = [
+        { pid: "P1", arrival: 0, burst: 6, priority: 2, pages: 4 },
+        { pid: "P2", arrival: 1, burst: 4, priority: 1, pages: 3 },
+        { pid: "P3", arrival: 2, burst: 5, priority: 3, pages: 5 },
+        { pid: "P4", arrival: 4, burst: 3, priority: 1, pages: 2 }
+    ];
+    demo.forEach(d => {
+        processes.push({
+            ...d,
+            remaining: d.burst,
+            state: "new"
+        });
+    });
+    globalTime = 0;
+    currentCpuProcess = null;
+    console.log("Procesos demo inicializados:", processes);
+    renderAll();
+}
+
+function startSimulation() {
+    if (intervalId) clearInterval(intervalId);
+    intervalId = setInterval(() => {
+        tick();
+    }, 1000);
+}
+
+function calculateMetrics() {
+    const total = processes.length;
+    if (total === 0) {
+        document.getElementById('metricTotal').textContent = '0';
+        document.getElementById('metricAvgTurnaround').textContent = '—';
+        document.getElementById('metricThroughput').textContent = '—';
+        document.getElementById('metricCpuUsage').textContent = '0%';
+        return;
+    }
+    
+    // Count terminated processes and calculate turnaround times
+    const terminated = processes.filter(p => p.state === 'terminated');
+    const totalTurnaround = terminated.reduce((sum, p) => {
+        // Estimate turnaround: (current time - arrival) or just burst if not finished
+        const finishTime = globalTime;
+        return sum + (finishTime - p.arrival);
+    }, 0);
+    const avgTurnaround = terminated.length > 0 ? (totalTurnaround / terminated.length).toFixed(1) : '—';
+    
+    // Throughput: processes completed per time unit
+    const throughput = terminated.length > 0 ? (terminated.length / globalTime).toFixed(2) : '—';
+    
+    // CPU Usage: time CPU was busy / total time
+    const busyTime = processes.reduce((sum, p) => sum + (p.burst - p.remaining), 0);
+    const cpuUsage = globalTime > 0 ? Math.min(100, (busyTime / globalTime) * 100).toFixed(1) : 0;
+    
+    document.getElementById('metricTotal').textContent = total;
+    document.getElementById('metricAvgTurnaround').textContent = avgTurnaround !== '—' ? avgTurnaround : '—';
+    document.getElementById('metricThroughput').textContent = throughput !== '—' ? throughput : '—';
+    document.getElementById('metricCpuUsage').textContent = `${cpuUsage}%`;
+}
+
+
+// Override renderAll to include metrics and pie chart
+const originalRenderAll = renderAll;
+renderAll = function() {
+    originalRenderAll();
+    calculateMetrics();
+    updatePieChart();
+};
+
+// Override tick to update metrics on each tick
+const originalTick = tick;
+tick = function() {
+    originalTick();
+    calculateMetrics();
+    updatePieChart();
+};
+
+// Override resetSimulation
+const originalReset = resetSimulation;
+resetSimulation = function() {
+    originalReset();
+    calculateMetrics();
+    updatePieChart();
+};
+
+// Override addProcess and addRandomProcess to trigger updates
+const originalAddProcess = addProcess;
+addProcess = function() {
+    originalAddProcess();
+    setTimeout(() => { calculateMetrics(); updatePieChart(); }, 100);
+};
+
+const originalAddRandom = addRandomProcess;
+addRandomProcess = function() {
+    originalAddRandom();
+    setTimeout(() => { calculateMetrics(); updatePieChart(); }, 100);
+};
+
+function exportToCSV() {
+    if (processes.length === 0) {
+        showAlert("No processes to export", "error");
+        return;
+    }
+    
+    // Define CSV headers
+    const headers = [
+        "PID",
+        "Arrival Time (ms)",
+        "Burst Time (ms)",
+        "Remaining Time (ms)",
+        "Priority",
+        "Number of Pages",
+        "Current State",
+        "Turnaround Time (ms)",
+        "Wait Time (est.)"
+    ];
+    
+    // Build data rows
+    const rows = processes.map(p => {
+        // Calculate estimated turnaround (current time - arrival for non-terminated)
+        let turnaround = "—";
+        if (p.state === "terminated") {
+            turnaround = (globalTime - p.arrival).toString();
+        } else if (globalTime >= p.arrival) {
+            turnaround = "in progress";
+        }
+        
+        // Estimate wait time (time spent not running)
+        const executionProgress = p.burst - p.remaining;
+        const estimatedWait = globalTime - p.arrival - executionProgress;
+        
+        return [
+            `"${p.pid}"`, // Wrap in quotes to handle special characters
+            p.arrival.toString(),
+            p.burst.toString(),
+            p.remaining.toString(),
+            p.priority.toString(),
+            p.pages.toString(),
+            p.state.toUpperCase(),
+            turnaround,
+            estimatedWait > 0 ? estimatedWait.toString() : "0"
+        ];
+    });
+    
+    // Combine headers and rows
+    const csvContent = [
+        headers.join(","),
+        ...rows.map(row => row.join(","))
+    ].join("\n");
+    
+    // Add BOM for UTF-8 encoding (handles special characters)
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    
+    // Create download link
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `processes_${timestamp}.csv`);
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up URL object
+    URL.revokeObjectURL(url);
+    
+    showAlert(`Exported ${processes.length} processes to CSV`, "success");
+}
+
+
+startSimulation();
+initDemoProcesses();
+
+window.addEventListener('beforeunload', () => {
+    if (intervalId) clearInterval(intervalId);
+});
+</script>
+</body>
+</html>

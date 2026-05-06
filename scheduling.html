@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador SO - CPU Scheduling</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg: #0a0c15;
+    --bg-panel: #111827;
+    --bg-card: #1f2937;
+    --fg: #e2e8f0;
+    --fg-muted: #9ca3af;
+    --accent: #38bdf8;
+    --accent-dark: #0284c7;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --info: #8b5cf6;
+    --border: #374151;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.dashboard {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 200px;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(4px);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+
+
+.sidebar-header {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--fg);
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+}
+
+/* opcional: efecto tipo branding como el h2 */
+.sidebar-header {
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+     padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.menu-item {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+}
+
+.menu-item.active {
+    background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(139,92,246,0.1));
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+}
+
+.menu-item:hover:not(.active) {
+    background: rgba(255,255,255,0.05);
+    color: var(--fg);
+}
+
+.main {
+    flex: 1; padding: 20px 24px; display: flex; flex-direction: column;
+    gap: 16px; height: 100vh; overflow: hidden;
+}
+
+h2 {
+    font-size: 1.8rem; font-weight: 600;
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; letter-spacing: -0.3px;
+}
+
+.two-columns { display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden; }
+.left-column { flex: 1.4; display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow: hidden; }
+.right-column { flex: 0.6; display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow: hidden; }
+
+/* Paneles */
+.panel {
+    background: var(--bg-panel); border-radius: 16px; padding: 16px;
+    border: 1px solid var(--border);
+}
+
+.config-grid { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+
+.input-group { display: flex; flex-direction: column; flex: 1; min-width: 140px; }
+.input-group label {
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
+    font-weight: 600; color: var(--fg-muted); margin-bottom: 4px;
+}
+.input-group input, .input-group select {
+    background: #0f172a; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; color: var(--fg); font-size: 0.9rem; outline: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border: none; border-radius: 8px; padding: 6px 16px; font-weight: 600;
+    color: white; cursor: pointer; transition: all 0.2s; font-size: 0.8rem; height: 34px;
+}
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.stats-panel { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.stat-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px;
+    padding: 12px; text-align: center; border-left: 3px solid var(--accent);
+}
+.stat-value { font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+.stat-label { font-size: 0.55rem; text-transform: uppercase; color: var(--fg-muted); margin-top: 4px; }
+
+/* Contenedor central con scroll */
+.scroll-container {
+    background: #0f172a; border-radius: 16px; padding: 16px; border: 1px solid var(--border);
+    display: flex; flex-direction: column; min-height: 0; flex: 1; gap: 24px; overflow-y: auto;
+}
+
+.hw-title { font-size: 0.75rem; font-weight: 600; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+
+.monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.hw-box {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 15px; display: flex; flex-direction: column; align-items: center;
+}
+
+.cpu-active {
+    width: 65px; height: 65px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 700; color: white; background: #0a0c15; border: 2px dashed var(--border); font-family: 'JetBrains Mono', monospace;
+    transition: all 0.3s;
+}
+
+/* Gantt Chart */
+.gantt-wrapper { overflow-x: auto; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.gantt-track { display: flex; align-items: flex-end; min-height: 60px; }
+.gantt-block { display: flex; flex-direction: column; align-items: flex-end; }
+.process-box {
+    color: white; font-weight: bold; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center; height: 32px;
+    margin-bottom: 2px;
+}
+.time-label { font-size: 0.65rem; color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; margin-right: -4px; }
+
+/* Tabla de resultados */
+.table-wrapper {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+}
+.results-table {
+    width: 100%; border-collapse: collapse; font-size: 0.8rem;
+}
+.results-table th {
+    text-align: left; padding: 12px 10px; color: var(--fg-muted); text-transform: uppercase;
+    font-size: 0.6rem; letter-spacing: 0.5px;
+    position: sticky; top: 0; background: #1f2937;
+    z-index: 10; border-bottom: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.results-table td {
+    padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: 'JetBrains Mono', monospace;
+}
+.results-table tr:hover { background: rgba(255,255,255,0.03); }
+
+/* Lista de procesos (Derecha) */
+.process-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 5px; }
+.process-item {
+    background: #0f172a; border-radius: 12px; padding: 14px; border-left: 4px solid;
+    transition: transform 0.2s;
+}
+.process-item:hover { transform: translateX(4px); }
+.process-inputs { display: flex; gap: 12px; margin-top: 10px; }
+.mini-input-group { display: flex; flex-direction: column; flex: 1; }
+.mini-input-group label { font-size: 0.55rem; color: var(--fg-muted); margin-bottom: 4px; text-transform: uppercase; font-weight: bold; }
+.mini-input-group input {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px; color: var(--fg); font-size: 0.85rem; width: 100%; outline: none;
+}
+.mini-input-group input:focus { border-color: var(--accent); }
+
+.alert {
+    position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 10px;
+    font-weight: 600; font-size: 0.85rem; z-index: 1000; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+    animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.alert-success { background: var(--success); color: white; }
+
+/* Scroll */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+.menu-item {
+    display: block; /* 🔥 clave para que se comporte como div */
+    text-decoration: none; /* quitar subrayado */
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    color: var(--fg);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+    height: 34px;
+}
+
+.btn-secondary:hover {
+    background: rgba(56,189,248,0.1);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="sidebar-header"> 
+            OS Visual Lab
+        </div>
+        <a class="menu-item" href="index.html">Processes</a>
+        <a class="menu-item active" href="scheduling.html">Scheduling</a>
+        <a class="menu-item" href="paginacion.html">Paging</a>
+        <a class="menu-item" href="replacement.html">Replacement</a>
+        <a class="menu-item" href="threads.html">Threads</a>
+        <a class="menu-item" href="multicore.html">Multi-Core</a>
+    </div>
+
+    <div class="main">
+        <h2>Scheduling</h2>
+
+        <div class="two-columns">
+            <div class="left-column">
+                <div class="panel">
+                    <div class="config-grid">
+                        <div class="input-group">
+                            <label>Scheduling Algorithm</label>
+                            <select id="algoSelect" onchange="handleAlgorithmChange()">
+                                <option value="SJF">Shortest Job First (SJF)</option>
+                                <option value="FCFS">First Come First Served (FCFS)</option>
+                                <option value="RR">Round Robin (RR)</option>
+                                <option value="PRIORITY">Priority</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="quantumGroup" style="display:none; max-width: 100px;">
+                            <label>Quantum</label>
+                            <input type="number" id="quantumInput" value="2" min="1">
+                        </div>
+                        <button class="btn-primary" id="btnSimulate" onclick="startSimulation()">▶️ Start Simulation</button>
+                        <button class="btn-secondary" onclick="exportSchedulingToCSV()" style="margin-left: auto;">Export CSV</button>
+                    </div>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stat-card"><div class="stat-value" id="st-tat">—</div><div class="stat-label">Avg Turnaround</div></div>
+                    <div class="stat-card"><div class="stat-value" id="st-wt">—</div><div class="stat-label">Avg Waiting</div></div>
+                    <div class="stat-card"><div class="stat-value" id="st-rt">—</div><div class="stat-label">Avg Response</div></div>
+                    <div class="stat-card"><div class="stat-value" id="st-cpu">—</div><div class="stat-label">CPU Util.</div></div>
+                    <div class="stat-card"><div class="stat-value" id="st-ctx">—</div><div class="stat-label">Context Sw.</div></div>
+                </div>
+
+                <div class="scroll-container">
+                    <div>
+                        <div class="hw-title">Execution Monitor</div>
+                        <div class="monitor-grid">
+                            <div class="hw-box">
+                                <span class="stat-label">CPU Status</span>
+                                <div class="cpu-active" id="cpuUI" style="margin-top: 10px;">IDLE</div>
+                            </div>
+                            <div class="hw-box">
+                                <span class="stat-label">Ready Queue</span>
+                                <div id="readyQueueUI" style="display:flex; gap:8px; font-family:'JetBrains Mono'; font-size:0.9rem; margin-top:10px;">---</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="hw-title">Gantt Chart</div>
+                        <div class="gantt-wrapper">
+                            <div id="ganttTrack" class="gantt-track"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="hw-title">Detailed Results Table</div>
+                        <div class="table-wrapper">
+                            <table class="results-table">
+                                <thead>
+                                    <tr>
+                                        <th>Process ID</th>
+                                        <th>Arrival Time</th>
+                                        <th>Burst Time</th>
+                                        <th>Completion Time</th>
+                                        <th>Turnaround Time</th>
+                                        <th>Waiting Time</th>
+                                        <th>Response Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsBody">
+                                    <tr><td colspan="7" style="text-align:center; color:var(--fg-muted); padding: 30px;">Start simulation to view results...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="panel" style="display:flex; flex-direction:column; height:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <div class="hw-title">Process Configuration</div>
+                        <button class="btn-primary" onclick="addProcess()">+ Add New</button>
+                    </div>
+                    <div id="processList" class="process-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const colors = ['#38bdf8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    let processes = [
+        { pid: "P1", at: 0, bt: 5, prio: 2, color: colors[0] },
+        { pid: "P2", at: 1, bt: 3, prio: 1, color: colors[1] },
+        { pid: "P3", at: 2, bt: 1, prio: 3, color: colors[2] },
+        { pid: "P4", at: 5, bt: 4, prio: 2, color: colors[3] }
+    ];
+
+    function handleAlgorithmChange() {
+        const algo = document.getElementById("algoSelect").value;
+        document.getElementById("quantumGroup").style.display = (algo === "RR") ? "flex" : "none";
+        renderProcessList();
+    }
+
+    function renderProcessList() {
+        const list = document.getElementById("processList");
+        const showPrio = document.getElementById("algoSelect").value === "PRIORITY";
+        list.innerHTML = processes.map((p, i) => `
+            <div class="process-item" style="border-left-color: ${p.color};">
+                <div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.85rem; color:${p.color}">
+                    Process: ${p.pid} <span onclick="removeProcess(${i})" style="cursor:pointer; color:var(--fg-muted); font-size:1.2rem;">&times;</span>
+                </div>
+                <div class="process-inputs">
+                    <div class="mini-input-group"><label>Arrival Time</label><input type="number" value="${p.at}" onchange="processes[${i}].at=Number(this.value)"></div>
+                    <div class="mini-input-group"><label>Burst Time</label><input type="number" value="${p.bt}" onchange="processes[${i}].bt=Number(this.value)"></div>
+                    ${showPrio ? `<div class="mini-input-group"><label>Priority</label><input type="number" value="${p.prio}" onchange="processes[${i}].prio=Number(this.value)"></div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function addProcess() {
+        const id = processes.length + 1;
+        processes.push({ pid: `P${id}`, at: 0, bt: 2, prio: 1, color: colors[id % colors.length] });
+        renderProcessList();
+    }
+
+    function removeProcess(i) { processes.splice(i, 1); renderProcessList(); }
+
+    function resetMetrics() {
+        document.getElementById("st-tat").textContent = "—";
+        document.getElementById("st-wt").textContent = "—";
+        document.getElementById("st-rt").textContent = "—";
+        document.getElementById("st-cpu").textContent = "—";
+        document.getElementById("st-ctx").textContent = "—";
+        document.getElementById("resultsBody").innerHTML =
+            '<tr><td colspan="7" style="text-align:center; color:var(--fg-muted); padding: 30px;">Running simulation...</td></tr>';
+        document.getElementById("ganttTrack").innerHTML = '';
+        const cpuUI = document.getElementById("cpuUI");
+        cpuUI.textContent = "IDLE";
+        cpuUI.style.borderColor = "var(--border)";
+        cpuUI.style.boxShadow = "none";
+    }
+
+    function runEngine(procs, algo, quantum) {
+        let t = 0, completed = 0, n = procs.length, timeline = [];
+        let pList = procs.map(p => ({ ...p, rt: p.bt, started: false }));
+        let rrQueue = [];
+        let ctxSwitches = 0;
+        let lastPid = null;
+        let totalIdle = 0;
+
+        while (completed < n) {
+            let available = pList.filter(p => p.at <= t && p.rt > 0);
+            let sel = null;
+
+            if (algo === "RR") {
+                pList.filter(p => p.at <= t && p.rt > 0 && !rrQueue.includes(p)).forEach(p => rrQueue.push(p));
+                if (rrQueue.length > 0) sel = rrQueue.shift();
+            } else {
+                if (available.length > 0) {
+                    if (algo === "FCFS") sel = available.sort((a, b) => a.at - b.at)[0];
+                    if (algo === "SJF") sel = available.sort((a, b) => a.bt - b.bt || a.at - b.at)[0];
+                    if (algo === "PRIORITY") sel = available.sort((a, b) => a.prio - b.prio || a.at - b.at)[0];
+                }
+            }
+
+            if (!sel) {
+                let idleStart = t;
+                t++;
+                if (timeline.length > 0 && timeline[timeline.length - 1].pid === "IDLE") {
+                    timeline[timeline.length - 1].end = t;
+                } else {
+                    timeline.push({ pid: "IDLE", start: idleStart, end: t, color: "transparent" });
+                }
+                totalIdle++;
+                lastPid = "IDLE";
+                continue;
+            }
+
+            if (lastPid && lastPid !== sel.pid && lastPid !== "IDLE") ctxSwitches++;
+            if (!sel.started) { sel.respTime = t - sel.at; sel.started = true; }
+
+            let run = (algo === "RR") ? Math.min(sel.rt, quantum) : sel.rt;
+            let startT = t;
+            t += run;
+            sel.rt -= run;
+
+            timeline.push({ pid: sel.pid, start: startT, end: t, color: sel.color });
+            lastPid = sel.pid;
+
+            if (algo === "RR") {
+                pList.filter(p => p.at <= t && p.rt > 0 && !rrQueue.includes(p) && p !== sel).forEach(p => rrQueue.push(p));
+                if (sel.rt > 0) rrQueue.push(sel);
+            }
+
+            if (sel.rt === 0) {
+                sel.ct = t;
+                sel.tat = sel.ct - sel.at;
+                sel.wt = sel.tat - sel.bt;
+                completed++;
+            }
+        }
+        return { timeline, stats: pList, totalT: t, ctxSwitches, totalIdle };
+    }
+
+    // ==================== EXPORT TO CSV ====================
+
+function exportSchedulingToCSV() {
+    // Obtener los resultados actuales de la tabla
+    const resultsRows = document.querySelectorAll('#resultsBody tr');
+    
+    if (resultsRows.length === 0 || (resultsRows.length === 1 && resultsRows[0].innerText.includes('Start simulation'))) {
+        showAlert("No simulation results to export. Run a simulation first.", "error");
+        return;
+    }
+    
+    // Obtener datos de la simulación actual
+    const algorithm = document.getElementById("algoSelect").value;
+    const quantum = document.getElementById("quantumInput").value;
+    const avgTAT = document.getElementById("st-tat").textContent;
+    const avgWT = document.getElementById("st-wt").textContent;
+    const avgRT = document.getElementById("st-rt").textContent;
+    const cpuUtil = document.getElementById("st-cpu").textContent;
+    const ctxSwitches = document.getElementById("st-ctx").textContent;
+    
+    // Headers principales
+    const headers = [
+        "Process ID",
+        "Arrival Time",
+        "Burst Time",
+        "Completion Time",
+        "Turnaround Time",
+        "Waiting Time",
+        "Response Time"
+    ];
+    
+    // Recopilar datos de cada proceso desde la tabla
+    const processData = [];
+    resultsRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 7 && cells[0].innerText.trim() !== "Start simulation to view results...") {
+            processData.push({
+                pid: cells[0].innerText.trim(),
+                arrival: cells[1].innerText.trim(),
+                burst: cells[2].innerText.trim(),
+                completion: cells[3].innerText.trim(),
+                turnaround: cells[4].innerText.trim(),
+                waiting: cells[5].innerText.trim(),
+                response: cells[6].innerText.trim()
+            });
+        }
+    });
+    
+    if (processData.length === 0) {
+        showAlert("No process data available to export", "error");
+        return;
+    }
+    
+    // Construir CSV
+    let csvRows = [];
+    
+    // Información del encabezado de simulación
+    csvRows.push(`# Simulation Report - CPU Scheduling`);
+    csvRows.push(`# Generated: ${new Date().toLocaleString()}`);
+    csvRows.push(`# Algorithm: ${algorithm}${algorithm === 'RR' ? ` (Quantum = ${quantum})` : ''}`);
+    csvRows.push(`# Average Turnaround Time: ${avgTAT}`);
+    csvRows.push(`# Average Waiting Time: ${avgWT}`);
+    csvRows.push(`# Average Response Time: ${avgRT}`);
+    csvRows.push(`# CPU Utilization: ${cpuUtil}`);
+    csvRows.push(`# Context Switches: ${ctxSwitches}`);
+    csvRows.push(``); // línea en blanco
+    
+    // Datos de la tabla
+    csvRows.push(headers.join(","));
+    
+    processData.forEach(p => {
+        csvRows.push([
+            `"${p.pid}"`,
+            p.arrival,
+            p.burst,
+            p.completion,
+            p.turnaround,
+            p.waiting,
+            p.response
+        ].join(","));
+    });
+    
+    // Añadir estadísticas resumidas al final
+    csvRows.push(``);
+    csvRows.push(`# Summary Statistics`);
+    csvRows.push(`# Total Processes,${processData.length}`);
+    csvRows.push(`# Algorithm,${algorithm}`);
+    csvRows.push(`# Quantum,${algorithm === 'RR' ? quantum : 'N/A'}`);
+    csvRows.push(`# Average Turnaround Time,${avgTAT}`);
+    csvRows.push(`# Average Waiting Time,${avgWT}`);
+    csvRows.push(`# Average Response Time,${avgRT}`);
+    csvRows.push(`# CPU Utilization,${cpuUtil}`);
+    csvRows.push(`# Context Switches,${ctxSwitches}`);
+    
+    // Crear y descargar archivo
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `scheduling_results_${algorithm}_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showAlert(`Exported ${processData.length} processes to CSV`, "success");
+}
+
+// Función auxiliar para mostrar alertas (si no existe)
+function showAlert(message, type) {
+    const alertDiv = document.createElement("div");
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 2500);
+}
+
+    async function startSimulation() {
+        // Resetear todas las métricas antes de iniciar la nueva simulación
+        resetMetrics();
+
+        const btn = document.getElementById("btnSimulate");
+        btn.disabled = true;
+        btn.textContent = "⏳ Running...";
+
+        const algo = document.getElementById("algoSelect").value;
+        const q = Number(document.getElementById("quantumInput").value);
+        const { timeline, stats, totalT, ctxSwitches, totalIdle } = runEngine(processes, algo, q);
+
+        const track = document.getElementById("ganttTrack");
+        track.innerHTML = `<div class="time-label" style="margin-right:8px; align-self: flex-end; padding-bottom: 2px;">0</div>`;
+
+        document.getElementById("st-ctx").textContent = ctxSwitches;
+
+        for (let seg of timeline) {
+            let isIdle = seg.pid === 'IDLE';
+
+            document.getElementById("cpuUI").textContent = seg.pid;
+            document.getElementById("cpuUI").style.borderColor = isIdle ? "var(--border)" : seg.color;
+            document.getElementById("cpuUI").style.boxShadow = isIdle ? "none" : `0 0 15px ${seg.color}40`;
+
+            const block = document.createElement("div");
+            block.className = "gantt-block";
+
+            let boxBg = isIdle ? 'repeating-linear-gradient(45deg, #111827, #111827 6px, #1f2937 6px, #1f2937 12px)' : `${seg.color}BB`;
+            let boxBorder = isIdle ? '1px dashed #4b5563' : `1px solid ${seg.color}`;
+            let boxColor = isIdle ? 'var(--fg-muted)' : 'white';
+            let boxText = isIdle ? 'IDLE' : seg.pid;
+
+            block.innerHTML = `
+                <div class="process-box" style="width:${Math.max((seg.end-seg.start)*35, 30)}px; background:${boxBg}; border:${boxBorder}; color:${boxColor};">${boxText}</div>
+                <div class="time-label">${seg.end}</div>
+            `;
+            track.appendChild(block);
+            await new Promise(r => setTimeout(r, 400));
+        }
+
+        // Tabla de Resultados
+        document.getElementById("resultsBody").innerHTML = stats.map(p => `
+            <tr>
+                <td style="color:${p.color}; font-weight:bold;">${p.pid}</td>
+                <td>${p.at}</td>
+                <td>${p.bt}</td>
+                <td>${p.ct}</td>
+                <td style="color:var(--accent); font-weight: 600;">${p.tat}</td>
+                <td style="color:var(--warn); font-weight: 600;">${p.wt}</td>
+                <td>${p.respTime}</td>
+            </tr>
+        `).join('');
+
+        // Stats Globales
+        const avg = (key) => (stats.reduce((a, b) => a + b[key], 0) / stats.length).toFixed(1);
+        let cpuUtil = ((totalT - totalIdle) / totalT) * 100;
+
+        document.getElementById("st-tat").textContent = avg('tat');
+        document.getElementById("st-wt").textContent = avg('wt');
+        document.getElementById("st-rt").textContent = avg('respTime');
+        document.getElementById("st-cpu").textContent = `${cpuUtil.toFixed(1)}%`;
+
+        btn.disabled = false;
+        btn.textContent = "▶️ Start Simulation";
+
+        const alertEl = document.createElement("div");
+        alertEl.className = "alert alert-success";
+        alertEl.textContent = "Simulation Completed Successfully";
+        document.body.appendChild(alertEl);
+        setTimeout(() => alertEl.remove(), 2500);
+    }
+
+    renderProcessList();
+</script>
+</body>
+</html>

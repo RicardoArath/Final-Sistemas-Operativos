@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Simulador SO - Paginación de Memoria</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #0a0c15;
+    --bg-panel: #111827;
+    --bg-card: #1f2937;
+    --fg: #e2e8f0;
+    --fg-muted: #9ca3af;
+    --accent: #38bdf8;
+    --accent-dark: #0284c7;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --info: #8b5cf6;
+    --border: #374151;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.dashboard {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 200px;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(4px);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+
+
+.sidebar-header {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--fg);
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+}
+
+/* opcional: efecto tipo branding como el h2 */
+.sidebar-header {
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+     padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.menu-item {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+}
+
+.menu-item.active {
+    background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(139,92,246,0.1));
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+}
+
+.menu-item:hover:not(.active) {
+    background: rgba(255,255,255,0.05);
+    color: var(--fg);
+}
+
+.menu-item {
+    display: block; /* 🔥 clave para que se comporte como div */
+    text-decoration: none; /* quitar subrayado */
+}
+
+.main {
+    flex: 1;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100vh;
+    overflow: hidden;
+}
+
+h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.3px;
+}
+
+/* Layout de dos columnas */
+.two-columns {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.left-column {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.right-column {
+    flex: 0.8;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Panel de configuración compacto */
+.config-panel {
+    background: var(--bg-panel);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.config-grid {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 120px;
+}
+
+.input-group label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    color: var(--fg-muted);
+    margin-bottom: 4px;
+}
+
+.input-group input {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: var(--fg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border: none;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    height: 34px;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: scale(0.98);
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--fg);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+}
+
+.btn-secondary:hover {
+    background: rgba(56,189,248,0.1);
+    border-color: var(--accent);
+}
+
+/* Estadísticas compactas */
+.stats-panel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    border-left: 3px solid var(--accent);
+}
+
+.stat-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-top: 2px;
+}
+
+/* Contenedor de memoria con scroll */
+.memory-container {
+    background: #0f172a;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.memory-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+}
+
+.memory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+    overflow-y: auto;
+    padding: 4px;
+    flex: 1;
+}
+
+.memory-grid::-webkit-scrollbar {
+    width: 4px;
+}
+.memory-grid::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+.memory-grid::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.frame-card {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.frame-card.occupied {
+    border-width: 2px;
+}
+
+.frame-card.free {
+    border-color: var(--border);
+    opacity: 0.6;
+}
+
+.frame-number {
+    font-size: 0.6rem;
+    color: var(--fg-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.frame-content {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 6px 0;
+}
+
+.frame-page {
+    font-size: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--fg-muted);
+}
+
+.fragmentation-info {
+    font-size: 0.65rem;
+    color: var(--warn);
+    margin-top: 8px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Contenedor de procesos con scroll */
+.process-list-panel {
+    background: var(--bg-panel);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.process-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.process-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
+.process-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.process-input-group {
+    display: flex;
+    gap: 6px;
+}
+
+.process-input-group input {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: var(--fg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    width: 90px;
+}
+
+.process-list {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+}
+
+.process-list::-webkit-scrollbar {
+    width: 4px;
+}
+.process-list::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+.process-list::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+}
+
+.process-item {
+    background: #0f172a;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    border-left: 3px solid;
+}
+
+.process-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.process-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.process-pid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--fg-muted);
+}
+
+.process-pages {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.page-badge {
+    border-radius: 5px;
+    padding: 3px 6px;
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(0,0,0,0.4);
+}
+
+.page-badge:hover {
+    transform: scale(1.05);
+}
+
+.page-badge.loaded {
+    background: rgba(0,0,0,0.6);
+}
+
+.page-badge.not-loaded {
+    opacity: 0.6;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.control-bar {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    animation: slideIn 0.3s ease-out;
+    z-index: 1000;
+}
+
+.alert-success { background: var(--success); color: white; }
+.alert-error { background: var(--danger); color: white; }
+.alert-info { background: var(--info); color: white; }
+.alert-fault { background: var(--danger); color: white; animation: pulseFault 0.5s ease-in-out; }
+
+
+
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulseFault {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); background: #ff4444; }
+}
+</style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="sidebar-header"> 
+            OS Visual Lab
+        </div>
+        <a class="menu-item" href="index.html">Processes</a>
+        <a class="menu-item" href="scheduling.html">Scheduling</a>
+        <a class="menu-item active" href="paginacion.html">Paging</a>
+        <a class="menu-item" href="replacement.html">Replacement</a>
+        <a class="menu-item" href="threads.html">Threads</a>
+        <a class="menu-item" href="multicore.html">Multi-Core</a>
+    </div>
+
+    <div class="main">
+        <h2>Paging</h2>
+
+        <div class="two-columns">
+            <!-- Left column -->
+            <div class="left-column">
+                <div class="config-panel">
+                    <div class="config-grid">
+                        <div class="input-group">
+                            <label>Memory (KB)</label>
+                            <input type="number" id="memSize" value="4096" step="1024" min="1024">
+                        </div>
+                        <div class="input-group">
+                            <label>Page Size (KB)</label>
+                            <input type="number" id="pageSize" value="4" step="4" min="4">
+                        </div>
+                        <button class="btn-primary" onclick="applyConfig()">Apply</button>
+                    </div>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalFrames">0</div>
+                        <div class="stat-label">Total Frames</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="usedFrames">0</div>
+                        <div class="stat-label">Used</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="freeFrames">0</div>
+                        <div class="stat-label">Free</div>
+                    </div>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stat-card" style="border-left-color: var(--danger);">
+                        <div class="stat-value" id="pageFaults" style="color: var(--danger);">0</div>
+                        <div class="stat-label">Page Faults</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: var(--warn);">
+                        <div class="stat-value" id="internalFrag" style="color: var(--warn);">0</div>
+                        <div class="stat-label">Internal Fragmentation (KB)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="memUsage">0%</div>
+                        <div class="stat-label">Memory Usage</div>
+                    </div>
+                </div>
+
+                <div class="memory-container">
+                    <div class="memory-title">Main Memory - Page Frames</div>
+                    <div id="memoryGrid" class="memory-grid"></div>
+                    <div class="fragmentation-info" id="fragmentationInfo"></div>
+                </div>
+            </div>
+
+            <!-- Right column -->
+            <div class="right-column">
+                <div class="process-list-panel">
+                    <div class="process-header-bar">
+                        <div class="process-title">Processes and Pages</div>
+                        <div class="process-controls">
+                            <div class="process-input-group">
+                                <input type="text" id="newProcessPid" placeholder="PID" style="width: 70px;">
+                                <input type="number" id="newProcessPages" placeholder="Pages" value="3" min="1" style="width: 70px;">
+                            </div>
+                            <!-- <button class="btn-secondary" onclick="loadProcessesFromServer()">Load from Server</button> -->
+                            <button class="btn-primary" onclick="addCustomProcess()">Add</button>
+                            <button class="btn-secondary" onclick="addRandomProcess()">Random</button>
+                            <button class="btn-secondary" onclick="resetMemory()">Reset</button>
+                        </div>
+                    </div>
+
+                    <div id="processList" class="process-list"></div>
+
+                    <div class="control-bar" style="margin-top: 12px;">
+                        <button class="btn-secondary" onclick="loadAllRemainingPages()">Load All</button>
+                        <button class="btn-secondary" onclick="simulatePageFault()">Load Random Page</button>
+                        <!-- <button class="btn-secondary" onclick="showMemoryInfo()">Info</button> -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+// Colores predefinidos para procesos
+const processColors = [
+    '#38bdf8', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#d946ef'
+];
+
+let config = {
+    memSize: 4096,
+    pageSize: 4,
+    totalFrames: 0
+};
+
+let memory = [];
+let processes = [];
+let nextProcessId = 1;
+let pageFaultCounter = 0;
+
+function calculateFrames() {
+    return Math.floor(config.memSize / config.pageSize);
+}
+
+function getProcessColor(processId) {
+    const index = (processId - 1) % processColors.length;
+    return processColors[index];
+}
+
+function loadProcessesFromServer() {
+    fetch("getProcesses.php")
+        .then(res => res.json())
+        .then(data => {
+            console.log("Procesos del server:", data); // 🔍 DEBUG
+
+            data.forEach(p => {
+                 addProcess(p.pid, parseInt(p.pages) || 3); // 🔥 FIX CLAVE
+            });
+
+            renderAll(); // 🔥 FORZAR render
+            showAlert("Procesos cargados desde servidor", "success");
+        })
+        .catch(err => {
+            console.error(err);
+            showAlert("Error cargando procesos", "error");
+        });
+}
+
+// Calcula el tamaño real del proceso basado en páginas asignadas y fragmentación simulada
+function calculateRealProcessSize(numPages, pageSize) {
+    const maxSize = numPages * pageSize;
+
+    // 🎲 50% probabilidad de NO tener fragmentación
+    const noFragmentation = Math.random() < 0.75;
+
+    if (noFragmentation) {
+        // ✅ Proceso exacto (sin fragmentación)
+        return maxSize;
+    }
+
+    // ⚠️ Proceso con fragmentación
+    if (numPages === 1) {
+        // Entre 30% y 90% del tamaño
+        const minSize = Math.max(1, Math.floor(pageSize * 0.3));
+        const maxPartial = pageSize - 1;
+
+        return Math.floor(Math.random() * (maxPartial - minSize + 1)) + minSize;
+    } else {
+        // Páginas completas + última incompleta
+        const fullPagesSize = (numPages - 1) * pageSize;
+
+        // Última página entre 30% y 90%
+        const lastPageUsage = Math.floor(pageSize * (0.3 + Math.random() * 0.6));
+
+        return fullPagesSize + lastPageUsage;
+    }
+}
+
+function calculateInternalFragmentation() {
+    let totalRealSize = 0;
+    let totalAllocatedSize = 0;
+    
+    processes.forEach(process => {
+        const loadedPagesCount = process.pages.filter(p => p.loaded).length;
+        if (loadedPagesCount > 0) {
+            // Tamaño real que el proceso necesita
+            let realSizeForLoaded = 0;
+            if (loadedPagesCount === process.numPages) {
+                // Todas las páginas cargadas: usar el tamaño real completo
+                realSizeForLoaded = process.realSizeKB;
+            } else if (loadedPagesCount === process.numPages - 1) {
+                // Cargadas todas menos la última: usar páginas completas
+                realSizeForLoaded = loadedPagesCount * config.pageSize;
+            } else {
+                // Solo páginas completas cargadas
+                realSizeForLoaded = loadedPagesCount * config.pageSize;
+            }
+            
+            totalRealSize += Math.min(process.realSizeKB, realSizeForLoaded);
+            totalAllocatedSize += loadedPagesCount * config.pageSize;
+        }
+    });
+    
+    return Math.max(0, totalAllocatedSize - totalRealSize);
+}
+
+function applyConfig() {
+    const newMemSize = parseInt(document.getElementById('memSize').value);
+    const newPageSize = parseInt(document.getElementById('pageSize').value);
+    
+    if (isNaN(newMemSize) || isNaN(newPageSize) || newMemSize <= 0 || newPageSize <= 0) {
+        showAlert('Invalid Values', 'error');
+        return;
+    }
+    
+    if (newMemSize % newPageSize !== 0) {
+        showAlert('Memory must be a multiple of page size', 'error');
+        return;
+    }
+    
+    config.memSize = newMemSize;
+    config.pageSize = newPageSize;
+    config.totalFrames = calculateFrames();
+    
+    resetMemory();
+    showAlert('Configuration applied', 'success');
+}
+
+function resetMemory() {
+    memory = [];
+    for (let i = 0; i < config.totalFrames; i++) {
+        memory.push({
+            frameNum: i,
+            occupied: false,
+            processId: null,
+            pageNum: null,
+            processPid: null
+        });
+    }
+    processes = [];
+    nextProcessId = 1;
+    pageFaultCounter = 0;
+    renderAll();
+    showAlert('Memory reset', 'success');
+}
+
+function addCustomProcess() {
+    const pid = document.getElementById('newProcessPid').value.trim();
+    const numPages = parseInt(document.getElementById('newProcessPages').value);
+    
+    if (!pid) {
+        showAlert('Enter a PID', 'error');
+
+        return;
+    }
+    if (isNaN(numPages) || numPages < 1) {
+        showAlert('Invalid number of pages', 'error');
+        return;
+    }
+    if (processes.some(p => p.pid === pid)) {
+        showAlert('PID already exists', 'error');
+        return;
+    }
+    
+    addProcess(pid, numPages);
+    document.getElementById('newProcessPid').value = '';
+}
+
+function addRandomProcess() {
+    const pid = `P${nextProcessId}`;
+    const numPages = Math.floor(Math.random() * 6) + 1; // 1-6 páginas
+    addProcess(pid, numPages);
+}
+
+function addProcess(pid, numPages) {
+    const color = getProcessColor(nextProcessId);
+    // Calcular el tamaño real del proceso (con fragmentación simulada)
+    const realSizeKB = calculateRealProcessSize(numPages, config.pageSize);
+    const allocatedSizeKB = numPages * config.pageSize;
+    const fragmentationKB = allocatedSizeKB - realSizeKB;
+    
+    
+    const process = {
+        id: nextProcessId++,
+        pid: pid,
+        numPages: numPages,
+        realSizeKB: realSizeKB,      // Tamaño real que necesita el proceso
+        allocatedSizeKB: allocatedSizeKB,  // Tamaño asignado en memoria
+        fragmentationKB: fragmentationKB,  // Fragmentación interna de este proceso
+        pages: [],
+        totalLoaded: 0,
+        color: color
+    };
+    
+    for (let i = 0; i < numPages; i++) {
+        process.pages.push({
+            pageNum: i,
+            loaded: false,
+            frameIndex: null
+        });
+    }
+    
+    processes.push(process);
+    renderAll();
+    showAlert(`Process ${pid} added: ${numPages} pages`, 'success');
+}
+
+function loadPage(processId, pageNum) {
+    const process = processes.find(p => p.id === processId);
+    if (!process) return false;
+    
+    const page = process.pages[pageNum];
+    if (page.loaded) {
+        showAlert(`Page ${pageNum} is already loaded`, 'error');
+        return false;
+    }
+    
+    const freeFrameIndex = memory.findIndex(frame => !frame.occupied);
+    
+    if (freeFrameIndex === -1) {
+        // Esto es un Page Fault - no hay marcos libres
+        pageFaultCounter++;
+        showAlert(`PAGE FAULT! There are no frames available for another page ${pageNum} de ${process.pid}`, 'fault');
+        renderAll();
+        return false;
+    }
+    
+    memory[freeFrameIndex] = {
+        frameNum: freeFrameIndex,
+        occupied: true,
+        processId: process.id,
+        pageNum: pageNum,
+        processPid: process.pid,
+        color: process.color
+    };
+    
+    page.loaded = true;
+    page.frameIndex = freeFrameIndex;
+    process.totalLoaded++;
+    
+    renderAll();
+    showAlert(`Page ${pageNum} of ${process.pid} loaded into frame ${freeFrameIndex}`, 'success');
+    return true;
+}
+
+function loadAllPages(processId) {
+    const process = processes.find(p => p.id === processId);
+    if (!process) return;
+    
+    let loaded = 0;
+    for (let i = 0; i < process.pages.length; i++) {
+        if (!process.pages[i].loaded) {
+            if (loadPage(processId, i)) {
+                loaded++;
+            } else {
+                break;
+            }
+        }
+    }
+    
+    if (loaded > 0) {
+        showAlert(`${loaded} pages loaded for ${process.pid}`, 'success');
+    }
+}
+
+function loadAllRemainingPages() {
+    let totalLoaded = 0;
+    
+    for (const process of processes) {
+        for (let i = 0; i < process.pages.length; i++) {
+            if (!process.pages[i].loaded) {
+                if (loadPage(process.id, i)) {
+                    totalLoaded++;
+                } else {
+                    renderAll();
+                    return;
+                }
+            }
+        }
+    }
+    
+    if (totalLoaded > 0) {
+        showAlert(`${totalLoaded} pages loaded.`, 'success');
+    } else {
+        showAlert('All pages are already loaded', 'info');
+    }
+    renderAll();
+}
+
+function simulatePageFault() {
+    // Buscar un proceso con páginas no cargadas
+    const processesWithUnloaded = processes.filter(p => 
+        p.pages.some(page => !page.loaded)
+    );
+    
+    if (processesWithUnloaded.length === 0) {
+        showAlert('No more pages available to load', 'info');
+        return;
+    }
+    
+    const randomProc = processesWithUnloaded[Math.floor(Math.random() * processesWithUnloaded.length)];
+    const unloadedPages = randomProc.pages.filter(p => !p.loaded);
+    const randomPage = unloadedPages[Math.floor(Math.random() * unloadedPages.length)];
+    
+    // Forzar un page fault - primero llenamos la memoria si es necesario
+    const freeFrames = memory.filter(f => !f.occupied).length;
+    
+    if (freeFrames === 0) {
+        // Ya no hay marcos libres, esto genera un page fault
+        pageFaultCounter++;
+        showAlert(`⚠️ PAGE FAULT! No frames available ${randomPage.pageNum} de ${randomProc.pid}`, 'fault');
+        renderAll();
+    } else {
+        // Intentar cargar la página normalmente
+        loadPage(randomProc.id, randomPage.pageNum);
+    }
+}
+
+function showMemoryInfo() {
+    const usedFrames = memory.filter(f => f.occupied).length;
+    const freeFrames = memory.length - usedFrames;
+    const internalFrag = calculateInternalFragmentation();
+    
+    let info = `=== INFORMACION DE MEMORIA ===\n`;
+    info += `Total marcos: ${memory.length}\n`;
+    info += `Marcos usados: ${usedFrames}\n`;
+    info += `Marcos libres: ${freeFrames}\n`;
+    info += `Tamano por marco: ${config.pageSize}KB\n`;
+    info += `Memoria usada: ${usedFrames * config.pageSize}KB / ${config.memSize}KB\n`;
+    info += `\n=== ESTADISTICAS ===\n`;
+    info += `Page Faults: ${pageFaultCounter}\n`;
+    info += `Fragmentacion interna total: ${internalFrag}KB\n`;
+    info += `\n=== PROCESOS ===\n`;
+    
+    processes.forEach(p => {
+        const loadedPages = p.pages.filter(page => page.loaded).length;
+        const allocatedCurrent = loadedPages * config.pageSize;
+        const realSizeForLoaded = Math.min(p.realSizeKB, allocatedCurrent);
+        const currentFrag = Math.max(0, allocatedCurrent - realSizeForLoaded);
+        info += `${p.pid}: ${p.numPages} paginas | Asignado: ${p.allocatedSizeKB}KB | Real: ${p.realSizeKB}KB | Fragmentacion: ${p.fragmentationKB}KB | Cargado: ${loadedPages}/${p.numPages} (${currentFrag}KB frag actual)\n`;
+    });
+    
+    alert(info);
+}
+
+function renderAll() {
+    console.log("Procesos actuales:", processes); // 🔥 clave
+
+    const memoryGrid = document.getElementById('memoryGrid');
+    const usedFramesCount = memory.filter(f => f.occupied).length;
+    const freeFramesCount = memory.length - usedFramesCount;
+    const memUsagePercent = (usedFramesCount / memory.length * 100).toFixed(1);
+    const internalFrag = calculateInternalFragmentation();
+    
+    memoryGrid.innerHTML = memory.map(frame => {
+        const bgColor = frame.occupied ? frame.color : 'transparent';
+        return `
+            <div class="frame-card ${frame.occupied ? 'occupied' : 'free'}" style="${frame.occupied ? `border-color: ${frame.color}; background: ${frame.color}10;` : ''}">
+                <div class="frame-number">Frame ${frame.frameNum}</div>
+                ${frame.occupied ? `
+                    <div class="frame-content" style="color: ${frame.color};">${frame.processPid}</div>
+                    <div class="frame-page">Pae ${frame.pageNum}</div>
+                ` : `
+                    <div class="frame-content">Free</div>
+                    <div class="frame-page">---</div>
+                `}
+            </div>
+        `;
+    }).join('');
+    
+    // Actualizar estadísticas
+    document.getElementById('totalFrames').textContent = memory.length;
+    document.getElementById('usedFrames').textContent = usedFramesCount;
+    document.getElementById('freeFrames').textContent = freeFramesCount;
+    document.getElementById('memUsage').textContent = `${memUsagePercent}%`;
+    document.getElementById('pageFaults').textContent = pageFaultCounter;
+    document.getElementById('internalFrag').textContent = internalFrag;
+    document.getElementById('fragmentationInfo').innerHTML = ` Internal Fragmentation: ${internalFrag} KB | Page Faults: ${pageFaultCounter} | Page Size: ${config.pageSize} KB`;
+    
+    const processListDiv = document.getElementById('processList');
+    if (processes.length === 0) {
+        processListDiv.innerHTML = '<div style="text-align:center; padding: 30px; color: var(--fg-muted);">No hay procesos. Agrega uno para comenzar</div>';
+        return;
+    }
+    
+    processListDiv.innerHTML = processes.map(proc => {
+        const progressPercent = (proc.totalLoaded / proc.numPages * 100).toFixed(1);
+        const loadedPagesCount = proc.totalLoaded;
+        const allocatedCurrent = loadedPagesCount * config.pageSize;
+        const realSizeForLoaded = Math.min(proc.realSizeKB, allocatedCurrent);
+        const currentFrag = Math.max(0, allocatedCurrent - realSizeForLoaded);
+        
+        return `
+            <div class="process-item" style="border-left-color: ${proc.color};">
+                <div class="process-header-info">
+                    <div class="process-name" style="color: ${proc.color};">${proc.pid}</div>
+                    <div class="process-pid">
+                        ${proc.totalLoaded}/${proc.numPages} pág | Uso: ${proc.realSizeKB} KB | Asig: ${proc.allocatedSizeKB} KB
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progressPercent}%; background: ${proc.color};"></div>
+                </div>
+                ${proc.fragmentationKB > 0 ? `
+                    <div style="font-size:0.6rem; color: var(--warn); margin-top: 4px;">
+                        ${loadedPagesCount > 0 
+                            ? `Fragmentación: ${currentFrag} KB`
+                            : ``
+                        }
+                    </div>
+                ` : `
+                    
+                `}
+                <div class="process-pages">
+                    ${proc.pages.map((page, idx) => `
+                        <div class="page-badge ${page.loaded ? 'loaded' : 'not-loaded'}" 
+                             style="${page.loaded ? `background: ${proc.color}20; border: 1px solid ${proc.color};` : 'border: 1px solid var(--border);'}"
+                             onclick="loadPage(${proc.id}, ${idx})">
+                            Pag ${idx} ${page.loaded ? '✓' : '✗'}
+                            ${page.loaded ? `(M${page.frameIndex})` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ${proc.totalLoaded < proc.numPages ? `
+                    <div style="margin-top: 8px;">
+                        <button class="btn-secondary" style="font-size:0.65rem; padding:3px 10px;" onclick="loadAllPages(${proc.id})">
+                            Cargar todas
+                        </button>
+                    </div>
+                ` : `
+                    
+                `}
+            </div>
+        `;
+    }).join('');
+}
+
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 2000);
+}
+
+function init() {
+    config.totalFrames = calculateFrames();
+    resetMemory();
+
+    loadProcessesFromServer(); // 🔥 aquí
+}
+
+init();
+</script>
+</body>
+</html>
