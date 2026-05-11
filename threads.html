@@ -410,17 +410,30 @@ h2 {
 <div class="dashboard">
 
   <!-- ══ SIDEBAR ══ -->
-  <div class="sidebar">
-        <div class="sidebar-header">
-            OS Visual Lab
-        </div>
-        <a class="menu-item" href="index.html">Processes</a>
-        <a class="menu-item" href="scheduling.html">Scheduling</a>
-        <a class="menu-item" href="paginacion.html">Paging</a>
-        <a class="menu-item" href="replacement.html">Replacement</a>
-        <a class="menu-item active" href="threads.html">Threads</a>
-        <a class="menu-item" href="multicore.html">Multi-Core</a>
-    </div>
+  <nav class="sidebar">
+    <div class="sidebar-header">OS Visual Lab</div>
+    <a class="menu-item" href="index.html">
+      <span class="menu-text">Processes</span>
+    </a>
+    <a class="menu-item" href="scheduling.html">
+      <span class="menu-text">Scheduling</span>
+    </a>
+    <a class="menu-item" href="paginacion.html">
+      <span class="menu-text">Paging</span>
+    </a>
+    <a class="menu-item" href="replacement.html">
+      <span class="menu-text">Replacement</span>
+    </a>
+    <a class="menu-item active" href="threads.html">
+      <span class="menu-text">Threads</span>
+    </a>
+    <a class="menu-item" href="multicore.html">
+      <span class="menu-text">Multi-Core</span>
+    </a>
+    <a class="menu-item" href="comparacion.html">
+      <span class="menu-text">Comparacion</span>
+    </a>
+  </nav>
 
   <!-- ══ MAIN ══ -->
   <main class="main">
@@ -439,11 +452,11 @@ h2 {
         </div>
                 <div class="input-group" id="quantumGroup">
           <label>Quantum (u.t.)</label>
-          <input type="number" id="quantumInput" value="3" min="1" max="10">
+          <input type="number" id="quantumInput" value="3" min="1" max="10" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
         </div>
                 <div class="input-group" id="kThreadsContainer" style="display:none; max-width:140px;">
           <label>Kernel Threads (K)</label>
-          <input type="number" id="kThreadsInput" value="2" min="1" max="8">
+          <input type="number" id="kThreadsInput" value="2" min="1" max="8" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
         </div>
         <button class="btn-primary" onclick="addProcess()">＋ Process</button>
         <button class="btn-primary" id="btnSimulate" onclick="startSimulation()">▶ Simulate</button>
@@ -670,6 +683,13 @@ P2,T2,5,2</code>
 <!-- /modal instrucciones -->
 
 <script>
+function blockNeg(e) {
+  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+}
+function clampMin(el, min) {
+  if (el.value !== '' && +el.value < min) el.value = min;
+}
+
 // ═══════════════════════════════════════════════
 //  DATOS GLOBALES
 // ═══════════════════════════════════════════════
@@ -757,12 +777,14 @@ function renderProcessList() {
                 <div class="mini-input-group">
                     <label>Burst</label>
                     <input type="number" value="${t.burst}" min="1" max="20"
-                        onchange="processes[${pi}].threads[${ti}].burst=Number(this.value)">
+                        onkeydown="blockNeg(event)" oninput="clampMin(this,1)"
+                        onchange="processes[${pi}].threads[${ti}].burst=Math.max(1,Number(this.value)||1)">
                 </div>
                 <div class="mini-input-group">
                     <label>Arrival</label>
                     <input type="number" value="${t.arrival}" min="0"
-                        onchange="processes[${pi}].threads[${ti}].arrival=Number(this.value)">
+                        onkeydown="blockNeg(event)" oninput="clampMin(this,0)"
+                        onchange="processes[${pi}].threads[${ti}].arrival=Math.max(0,Number(this.value)||0)">
                 </div>
             </div>
             `).join('')}
