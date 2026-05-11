@@ -4544,7 +4544,117 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeAlgoModal();
             renderList();
             resetAll();
         }
-        window.onload = loadConfig;
+        // ── localStorage bridge: import processes from index.html ──
+function injectImportBanner() {
+    const shared = localStorage.getItem('os_shared_processes');
+    if (!shared) return;
+    try {
+        const procs = JSON.parse(shared);
+        if (!Array.isArray(procs) || procs.length === 0) return;
+        
+        // Buscar un punto de inserción - después del panel de procesos
+        const targetEl = document.querySelector('.row-tables-left .process-list-compact');
+        if (!targetEl) return;
+        
+        // Verificar si ya existe el banner
+        if (document.getElementById('importBanner')) return;
+        
+        const banner = document.createElement('div');
+        banner.className = 'import-panel';
+        banner.id = 'importBanner';
+        banner.style.cssText = 'background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid var(--accent); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;';
+        banner.innerHTML = `
+            <span style="font-size: 0.7rem; color: var(--accent);">
+                📦 ${procs.length} proceso(s) disponibles desde la página "Procesos"
+            </span>
+            <div style="display: flex; gap: 6px;">
+                <button onclick="importFromProcesses()" style="background: var(--accent); border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.65rem; font-weight: 600; color: #0f172a; cursor: pointer;">
+                    Importar
+                </button>
+                <button onclick="this.parentElement.parentElement.remove()" style="background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 0.65rem; color: var(--fg-muted); cursor: pointer;">
+                    Ignorar
+                </button>
+            </div>
+        `;
+        
+        // Insertar antes de processList
+        targetEl.parentElement.insertBefore(banner, targetEl);
+    } catch(e) {
+        console.error('Error injecting import banner:', e);
+    }
+}
+
+function importFromProcesses() {
+    const shared = localStorage.getItem('os_shared_processes');
+    if (!shared) {
+        if (typeof notify === 'function') notify('No hay datos', 'No se encontraron procesos guardados', 'error');
+        return;
+    }
+    try {
+        const procs = JSON.parse(shared);
+        if (!Array.isArray(procs) || procs.length === 0) return;
+        
+        // Limpiar procesos actuales
+        processes.length = 0;
+        
+        // Importar cada proceso
+        procs.forEach((p, i) => {
+            const idx = i % COLORS.length;
+            processes.push({
+                pid: p.pid || `P${i+1}`,
+                at: Math.max(0, parseInt(p.at) || 0),
+                bt: Math.max(1, parseInt(p.bt) || 2),
+                prio: Math.max(1, parseInt(p.prio) || 1),
+                queue: 1,
+                color: COLORS[idx],
+                emoji: EMOJIS[idx % 8],
+                name: NAMES[idx % 8],
+                bemoji: BEMOJIS[idx % 8],
+                bname: BNAMES[idx % 8],
+                cemoji: CEMOJIS[idx % 8],
+                cname: CNAMES[idx % 8],
+                ctype: CASE_TYPES[idx % 8],
+                aemoji: AEMOJIS[idx % 8],
+                aname: ANAMES[idx % 8],
+                gtype: GAME_TYPES[idx % 8],
+                femoji: FEMOJIS[idx % 8],
+                fname: FNAMES[idx % 8],
+                fteam: FTEAMS[idx % 8],
+                eemoji: EREMOJIS[idx % 8],
+                ename: ERNAMES[idx % 8],
+                apemoji: APEMOJIS[idx % 8],
+                apname: APNAMES[idx % 8],
+                stemoji: STEMOJIS[idx % 8],
+                stname: STNAMES[idx % 8],
+                stsubject: STSUBJECTS[idx % 8]
+            });
+        });
+        
+        // Actualizar UI
+        renderList();
+        resetAll();
+        
+        // Eliminar banner
+        const banner = document.getElementById('importBanner');
+        if (banner) banner.remove();
+        
+        // Notificar
+        if (typeof notify === 'function') {
+            notify('Procesos importados 📦', `${processes.length} proceso(s) cargados desde Procesos`, 'success');
+        } else {
+            console.log(`Importados ${processes.length} procesos`);
+        }
+        
+    } catch(e) {
+        console.error('Import error:', e);
+        if (typeof notify === 'function') notify('Error', 'No se pudieron importar los procesos', 'error');
+    }
+}
+        window.onload = function() {
+            loadConfig();
+            injectImportBanner();
+        };
+        
 
         function exportSchedulingToCSV() {
             const rows = document.querySelectorAll('#resultsBody tr');
