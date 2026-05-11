@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador SO - Threads</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg: #0a0c15;
+    --bg-panel: #111827;
+    --bg-card: #1f2937;
+    --fg: #e2e8f0;
+    --fg-muted: #9ca3af;
+    --accent: #38bdf8;
+    --accent-dark: #0284c7;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --info: #8b5cf6;
+    --border: #374151;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.dashboard { display: flex; height: 100vh; }
+
+.sidebar {
+    width: 200px;
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(4px);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+
+
+.sidebar-header {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--fg);
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+}
+
+/* opcional: efecto tipo branding como el h2 */
+.sidebar-header {
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+     padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.menu-item {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: transparent;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+}
+
+.menu-item.active {
+    background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(139,92,246,0.1));
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+}
+
+.menu-item:hover:not(.active) {
+    background: rgba(255,255,255,0.05);
+    color: var(--fg);
+}
+
+.menu-item {
+    display: block; /* 🔥 clave para que se comporte como div */
+    text-decoration: none; /* quitar subrayado */
+}
+
+.main {
+    flex: 1; padding: 20px 24px; display: flex; flex-direction: column;
+    gap: 16px; height: 100vh; overflow: hidden;
+}
+
+h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.3px;
+}
+.two-columns { display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden; }
+.left-column  { flex: 1.4; display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow: hidden; }
+.right-column { flex: 0.6;  display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow: hidden; }
+
+/* ── Panel genérico ── */
+.panel {
+    background: var(--bg-panel); border-radius: 16px; padding: 16px;
+    border: 1px solid var(--border);
+}
+.config-grid { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.input-group { display: flex; flex-direction: column; flex: 1; min-width: 130px; }
+.input-group label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+    font-weight: 600; color: var(--fg-muted); margin-bottom: 4px;
+}
+.input-group input, .input-group select {
+    background: #0f172a; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; color: var(--fg); font-size: 0.9rem; outline: none;
+    font-family: 'Inter', sans-serif;
+}
+.input-group input:focus, .input-group select:focus { border-color: var(--accent); }
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border: none; border-radius: 8px; padding: 6px 16px; font-weight: 600;
+    color: white; cursor: pointer; transition: 0.2s; font-size: 0.85rem; height: 38px;
+}
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; color: var(--fg); cursor: pointer; transition: all 0.2s; font-size: 0.75rem;
+}
+.btn-secondary:hover { background: rgba(56,189,248,0.1); border-color: var(--accent); }
+
+/* ── Stats ── */
+.stats-panel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.stat-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px;
+    padding: 12px; text-align: center; border-left: 3px solid var(--accent);
+}
+.stat-value { font-size: 1.2rem; font-weight: 700; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+.stat-label { font-size: 0.55rem; text-transform: uppercase; color: var(--fg-muted); margin-top: 4px; }
+
+/* ── Timeline / Gantt de threads ── */
+.scroll-container {
+    background: #0f172a; border-radius: 16px; padding: 16px; border: 1px solid var(--border);
+    display: flex; flex-direction: column; min-height: 0; flex: 1; gap: 20px; overflow-y: auto;
+}
+.hw-title {
+    font-size: 0.75rem; font-weight: 600; color: var(--accent);
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;
+}
+
+/* Timeline rows */
+.timeline-area { display: flex; flex-direction: column; gap: 6px; }
+.timeline-row { display: flex; align-items: center; gap: 8px; }
+.thread-label {
+    width: 70px; font-size: 0.7rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; flex-shrink: 0; text-align: right;
+}
+.thread-track {
+    flex: 1; height: 28px; background: #1e293b; border-radius: 6px;
+    position: relative; overflow: hidden; border: 1px solid var(--border);
+}
+.thread-segment {
+    position: absolute; top: 0; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    color: white; border-radius: 4px; transition: all 0.3s;
+    cursor: default;
+}
+.timeline-axis {
+    display: flex; gap: 0; padding-left: 78px; margin-top: 2px;
+}
+.axis-tick {
+    font-size: 0.6rem; color: var(--fg-muted); font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+}
+
+/* ── Tabla de resultados de threads ── */
+.table-wrapper {
+    max-height: 200px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);
+}
+.results-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.results-table th {
+    text-align: left; padding: 10px 10px; color: var(--fg-muted); text-transform: uppercase;
+    font-size: 0.6rem; letter-spacing: 0.5px;
+    position: sticky; top: 0; background: #1f2937;
+    z-index: 10; border-bottom: 1px solid var(--border);
+}
+.results-table td {
+    padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-family: 'JetBrains Mono', monospace;
+}
+.results-table tr:hover { background: rgba(255,255,255,0.03); }
+
+/* ── Lista de procesos (derecha) ── */
+.process-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+.process-item {
+    background: #0f172a; border-radius: 12px; padding: 14px; border-left: 4px solid;
+    transition: transform 0.2s;
+}
+.process-item:hover { transform: translateX(3px); }
+
+/* Thread badges dentro del proceso */
+.thread-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.thread-badge {
+    font-size: 0.65rem; font-family: 'JetBrains Mono', monospace;
+    padding: 3px 8px; border-radius: 6px; border: 1px solid;
+    font-weight: 600; cursor: default;
+}
+.thread-badge.running  { background: rgba(56,189,248,0.15); border-color: var(--accent); color: var(--accent); }
+.thread-badge.ready    { background: rgba(16,185,129,0.15); border-color: var(--success); color: var(--success); }
+.thread-badge.waiting  { background: rgba(245,158,11,0.15); border-color: var(--warn);    color: var(--warn); }
+.thread-badge.finished { background: rgba(156,163,175,0.1); border-color: var(--fg-muted); color: var(--fg-muted); }
+.thread-badge.blocked  { background: rgba(239,68,68,0.15);  border-color: var(--danger);  color: var(--danger); }
+
+.mini-input-group { display: flex; flex-direction: column; flex: 1; }
+.mini-input-group label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--fg-muted); margin-bottom: 3px; }
+.mini-input-group input {
+    background: #0a0c15; border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; color: var(--fg); font-size: 0.8rem; outline: none; width: 100%;
+}
+.mini-input-group input:focus { border-color: var(--accent); }
+.process-inputs { display: flex; gap: 8px; margin-top: 8px; }
+
+/* ── Diagrama de estados ── */
+.state-diagram {
+    background: #0f172a; border-radius: 16px; padding: 16px;
+    border: 1px solid var(--border); flex-shrink: 0;
+}
+.states-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 10px; }
+.state-node {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; flex: 1;
+}
+.state-circle {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    border: 2px solid; transition: all 0.4s;
+}
+.state-circle.new      { background: rgba(139,92,246,0.2); border-color: var(--info);    color: var(--info); }
+.state-circle.ready    { background: rgba(16,185,129,0.2); border-color: var(--success); color: var(--success); }
+.state-circle.running  { background: rgba(56,189,248,0.2); border-color: var(--accent);  color: var(--accent); }
+.state-circle.waiting  { background: rgba(245,158,11,0.2); border-color: var(--warn);    color: var(--warn); }
+.state-circle.finished { background: rgba(156,163,175,0.1); border-color: var(--fg-muted); color: var(--fg-muted); }
+.state-circle.active   { transform: scale(1.15); box-shadow: 0 0 18px currentColor; }
+.state-name { font-size: 0.55rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.state-arrow { color: var(--border); font-size: 1.1rem; flex-shrink: 0; }
+
+/* ── CPU box (hilo activo) ── */
+.cpu-box {
+    background: var(--bg-card); border-radius: 12px; padding: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    border: 1px solid var(--border); flex-shrink: 0;
+}
+.cpu-active {
+    width: 70px; height: 55px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 700; color: white;
+    background: #0a0c15; border: 2px dashed var(--border);
+    font-family: 'JetBrains Mono', monospace; transition: all 0.3s;
+    text-align: center; line-height: 1.2;
+}
+.cpu-label { font-size: 0.6rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* ── Alert ── */
+.alert {
+    position: fixed; top: 24px; right: 24px; z-index: 999;
+    padding: 12px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 600;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from { transform: translateX(100px); opacity:0; } to { transform: translateX(0); opacity:1; } }
+.alert-success { background: rgba(16,185,129,0.2); border: 1px solid var(--success); color: var(--success); }
+.alert-info    { background: rgba(56,189,248,0.15); border: 1px solid var(--accent);  color: var(--accent); }
+.alert-fault   { background: rgba(239,68,68,0.2);   border: 1px solid var(--danger);  color: var(--danger); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    color: var(--fg);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+    height: 38px;
+}
+
+.btn-secondary:hover {
+    background: rgba(56,189,248,0.1);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+/* ── Modal ── */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+    z-index: 500; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; animation: fadeIn .2s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box {
+    background: #111827; border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 24px; max-width: 600px; width: 92%;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6);
+    animation: modalIn .25s cubic-bezier(.34,1.56,.64,1);
+    position: relative; max-height: 85vh; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+@keyframes modalIn { from { transform: scale(.92) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+.modal-box::-webkit-scrollbar { width: 5px; }
+.modal-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.modal-close {
+    position: absolute; top: 14px; right: 16px; background: transparent;
+    border: none; color: var(--fg-muted); font-size: 1.2rem; cursor: pointer; transition: color .15s;
+}
+.modal-close:hover { color: var(--fg); }
+.modal-header { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+.instr-step {
+    display: flex; gap: 13px; padding: 12px 0;
+    border-bottom: 1px solid rgba(55,65,81,.5);
+}
+.instr-step:last-child { border-bottom: none; padding-bottom: 0; }
+.instr-step-left { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.instr-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff; font-size: .68rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.instr-icon { font-size: 1.35rem; line-height: 1; }
+.instr-step-body { flex: 1; min-width: 0; }
+.instr-step-title { font-size: .82rem; font-weight: 700; color: var(--fg); margin-bottom: 5px; }
+.instr-step-desc { font-size: .74rem; color: var(--fg-muted); line-height: 1.65; }
+.instr-step-desc strong { color: var(--fg); font-weight: 600; }
+.instr-step-desc em { color: var(--accent); font-style: normal; }
+.instr-code {
+    font-family: 'JetBrains Mono', monospace; font-size: .63rem;
+    background: #0f172a; border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 11px; margin-top: 7px; color: var(--accent);
+    display: block; white-space: pre; line-height: 1.6;
+}
+.instr-tag {
+    display: inline-block; font-size: .6rem; font-family: 'JetBrains Mono', monospace;
+    background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.3);
+    color: var(--accent); border-radius: 4px; padding: 1px 6px; margin: 2px 2px 2px 0;
+}
+
+/* ── SISTEMA DE NOTIFICACIONES ── */
+#notifContainer {
+    position: fixed; top: 16px; right: 16px; z-index: 9999;
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none; max-width: 320px;
+}
+.sys-notif {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: #1a2235; border: 1px solid var(--border); border-left: 4px solid;
+    border-radius: 10px; padding: 10px 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.55);
+    pointer-events: all; animation: notifIn .3s cubic-bezier(.34,1.56,.64,1);
+    position: relative; min-width: 240px;
+}
+.sys-notif.notif-out { animation: notifOut .35s ease-in forwards; }
+@keyframes notifIn  { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes notifOut {
+    from { transform: translateX(0);    opacity: 1; max-height: 80px; margin-bottom: 0; }
+    to   { transform: translateX(110%); opacity: 0; max-height: 0;    margin-bottom: -8px; }
+}
+.notif-icon { font-size: 1.25rem; flex-shrink: 0; line-height: 1.2; }
+.notif-content { flex: 1; min-width: 0; }
+.notif-title { font-size: .78rem; font-weight: 700; color: var(--fg); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-body  { font-size: .68rem; color: var(--fg-muted); line-height: 1.45; word-break: break-word; }
+.notif-close { background: transparent; border: none; color: var(--fg-muted); cursor: pointer; font-size: .85rem; padding: 0 0 0 4px; line-height: 1; flex-shrink: 0; align-self: flex-start; }
+.notif-close:hover { color: var(--fg); }
+.notif-progress { position: absolute; bottom: 0; left: 0; height: 3px; border-radius: 0 0 0 6px; animation: notifProgress linear forwards; opacity: .55; }
+@keyframes notifProgress { from { width: 100%; } to { width: 0%; } }
+</style>
+</head>
+<body>
+<div id="notifContainer"></div>
+<div class="dashboard">
+
+  <!-- ══ SIDEBAR ══ -->
+  <div class="sidebar">
+        <div class="sidebar-header">
+            OS Visual Lab
+        </div>
+        <a class="menu-item" href="index.html">Processes</a>
+        <a class="menu-item" href="scheduling.html">Scheduling</a>
+        <a class="menu-item" href="paginacion.html">Paging</a>
+        <a class="menu-item" href="replacement.html">Replacement</a>
+        <a class="menu-item active" href="threads.html">Threads</a>
+        <a class="menu-item" href="multicore.html">Multi-Core</a>
+    </div>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+    <h2>Thread Simulator</h2>
+
+    <!-- Config -->
+    <div class="panel">
+      <div class="config-grid">
+        <div class="input-group">
+          <label>Threads Model</label>
+          <select id="threadModel">
+            <option value="ULT">User-Level Threads (ULT) — Many-to-One</option>
+            <option value="KLT">Kernel-Level Threads (KLT) — One-to-One</option>
+            <option value="HYB">Hibrid — Many-to-Many</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Quantum (u.t.)</label>
+          <input type="number" id="quantumInput" value="3" min="1" max="10">
+        </div>
+        <div class="input-group" id="kThreadsContainer" style="display:none; max-width:140px;">
+          <label>Kernel Threads (K)</label>
+          <input type="number" id="kThreadsInput" value="2" min="1" max="8">
+        </div>
+        <button class="btn-primary" onclick="addProcess()">＋ Process</button>
+        <button class="btn-primary" id="btnSimulate" onclick="startSimulation()">▶ Simulate</button>
+        <button class="btn-secondary" onclick="saveThreadConfig()">💾 Guardar</button>
+        <button class="btn-secondary" onclick="document.getElementById('loadTxtInput').click()">📂 TXT</button>
+        <input type="file" id="loadTxtInput" accept=".txt,.csv" style="display:none;" onchange="loadThreadsFromTXT(this)">
+        <button class="btn-secondary" onclick="exportThreadsToCSV()">Export CSV</button>
+        <button class="btn-secondary" onclick="openInstrModal()">📖 Instrucciones</button>
+        <button class="btn-secondary" onclick="resetAll()">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="two-columns">
+
+      <!-- ══ COLUMNA IZQUIERDA ══ -->
+      <div class="left-column">
+
+        <!-- Stats -->
+        <div class="stats-panel">
+          <div class="stat-card">
+            <div class="stat-value" id="st-threads">0</div>
+            <div class="stat-label">Total Threads</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="st-ctx">0</div>
+            <div class="stat-label">Context Switches</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="st-cpu">—</div>
+            <div class="stat-label">CPU Utilization</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="st-avg-wt">—</div>
+            <div class="stat-label">Avg Wait Time</div>
+          </div>
+        </div>
+
+        <!-- Timeline de hilos -->
+        <div class="scroll-container">
+          <div class="hw-title">Thread Timeline (Gantt Per Thread)</div>
+          <div id="timelineArea" class="timeline-area">
+            <div style="text-align:center; color:var(--fg-muted); padding:20px; font-size:0.85rem;">
+              Add Processes & click ▶ Simulate
+            </div>
+          </div>
+          <div id="axisRow" class="timeline-axis"></div>
+
+          <!-- Tabla de resultados -->
+          <div class="hw-title" style="margin-top:8px;">Results by Thread</div>
+          <div class="table-wrapper">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Process</th>
+                  <th>Thread</th>
+                  <th>Burst</th>
+                  <th>Arrival</th>
+                  <th>Start</th>
+                  <th>Finish</th>
+                  <th>Turnaround</th>
+                  <th>Wait</th>
+                </tr>
+              </thead>
+              <tbody id="resultsTableBody">
+                <tr><td colspan="8" style="text-align:center; color:var(--fg-muted); padding:20px;">Sin resultados aún</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ COLUMNA DERECHA ══ -->
+      <div class="right-column">
+
+        <!-- Diagrama de estados -->
+        <div class="state-diagram">
+          <div class="hw-title">Active Thread State</div>
+          <div class="states-row">
+            <div class="state-node">
+              <div class="state-circle new" id="stNew">NEW</div>
+              <div class="state-name">New</div>
+            </div>
+            <div class="state-arrow">→</div>
+            <div class="state-node">
+              <div class="state-circle ready" id="stReady">READY</div>
+              <div class="state-name">Ready</div>
+            </div>
+            <div class="state-arrow">⇄</div>
+            <div class="state-node">
+              <div class="state-circle running" id="stRunning">RUN</div>
+              <div class="state-name">Running</div>
+            </div>
+            <div class="state-arrow">→</div>
+            <div class="state-node">
+              <div class="state-circle finished" id="stFinished">DONE</div>
+              <div class="state-name">Finished</div>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:center; margin-top:8px;">
+            <div style="font-size:0.6rem; color:var(--fg-muted); text-align:center;">
+              Running ↔ <span style="color:var(--warn);">Waiting</span> (I/O / Sync)
+            </div>
+          </div>
+        </div>
+
+        <!-- CPU activa -->
+        <div class="cpu-box">
+          <div class="cpu-label">CPU — Active Thread</div>
+          <div class="cpu-active" id="cpuUI">IDLE</div>
+          <div id="cpuModel" style="font-size:0.6rem; color:var(--fg-muted); margin-top:2px;">—</div>
+        </div>
+
+        <!-- Lista de procesos con sus hilos -->
+        <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+          <div class="hw-title">Processes & Threads</div>
+          <div class="process-list" id="processList">
+            <div style="text-align:center; padding:20px; color:var(--fg-muted); font-size:0.85rem;">
+              Agrega un proceso con ＋ Proceso
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══ MODAL INSTRUCCIONES ══ -->
+<div class="modal-overlay" id="instrModal" onclick="if(event.target===this)closeInstrModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeInstrModal()">✕</button>
+    <div class="modal-header">
+      <div style="font-size:2rem;">📖</div>
+      <div>
+        <div style="font-size:1rem;font-weight:700;color:var(--fg);">Instrucciones de uso</div>
+        <div style="font-size:.72rem;color:var(--fg-muted);">Guía del simulador de Threads</div>
+      </div>
+    </div>
+
+    <!-- Paso 1 -->
+    <div class="instr-step">
+      <div class="instr-step-left"><div class="instr-num">1</div><div class="instr-icon">🧵</div></div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Elegir modelo de threads</div>
+        <div class="instr-step-desc">
+          Selecciona el modelo en el desplegable <strong>Threads Model</strong>:<br><br>
+          <span class="instr-tag">ULT — Many-to-One</span> Un único hilo de kernel sirve a todos los hilos de usuario. La ejecución es <strong>estrictamente secuencial</strong>: nunca hay dos hilos corriendo al mismo tiempo. El planificador usa <em>Round Robin</em> con el quantum configurado.<br><br>
+          <span class="instr-tag">KLT — One-to-One</span> Cada hilo de usuario tiene su propio hilo de kernel. Los hilos corren <strong>en paralelo real</strong> desde su tiempo de llegada; el tiempo de espera siempre es 0.<br><br>
+          <span class="instr-tag">HYB — Many-to-Many</span> Hasta <em>K</em> hilos de kernel activos simultáneamente. Los hilos en exceso esperan en cola <em>Round Robin</em>. Configura <strong>K</strong> con el campo que aparece al elegir este modo.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 2 -->
+    <div class="instr-step">
+      <div class="instr-step-left"><div class="instr-num">2</div><div class="instr-icon">⚙️</div></div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Agregar procesos y threads</div>
+        <div class="instr-step-desc">
+          Haz clic en <strong>＋ Process</strong> para agregar un proceso con 2 hilos por defecto. Dentro de cada proceso puedes:<br><br>
+          • Editar el nombre del hilo (<strong>Thread</strong>), su <strong>Burst</strong> (tiempo de CPU) y su <strong>Arrival</strong> (tiempo de llegada)<br>
+          • Usar <strong>＋ Thread</strong> para añadir más hilos al proceso<br>
+          • Pulsar <strong>×</strong> para eliminar el proceso completo
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 3 -->
+    <div class="instr-step">
+      <div class="instr-step-left"><div class="instr-num">3</div><div class="instr-icon">⚡</div></div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Ejecutar la simulación</div>
+        <div class="instr-step-desc">
+          Pulsa <strong>▶ Simulate</strong> para iniciar la animación. El Gantt muestra el uso de CPU de cada hilo a lo largo del tiempo. El panel derecho muestra el estado activo del hilo en ejecución y las estadísticas:<br><br>
+          • <strong>Context Switches</strong> — cambios de contexto ocurridos<br>
+          • <strong>CPU Utilization</strong> — porcentaje de tiempo útil de la CPU<br>
+          • <strong>Avg Wait Time</strong> — promedio de tiempo de espera de todos los hilos<br><br>
+          La tabla de resultados muestra Turnaround y Wait individuales por hilo.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 4 -->
+    <div class="instr-step">
+      <div class="instr-step-left"><div class="instr-num">4</div><div class="instr-icon">💾</div></div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Guardar configuración</div>
+        <div class="instr-step-desc">
+          El botón <strong>💾 Guardar</strong> guarda todos los procesos, hilos, modelo y quantum en el <em>localStorage</em> del navegador. La próxima vez que abras el simulador cargará tu configuración automáticamente.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 5 -->
+    <div class="instr-step">
+      <div class="instr-step-left"><div class="instr-num">5</div><div class="instr-icon">📂</div></div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Cargar procesos desde archivo TXT/CSV</div>
+        <div class="instr-step-desc">
+          Presiona <strong>📂 TXT</strong> y selecciona un archivo con formato CSV. La primera línea debe ser el encabezado; las líneas con <em>#</em> son comentarios y se ignoran. Los procesos se agrupan por PID.<br><br>
+          Columnas requeridas: <code>pid, tid, burst, arrival</code>
+          <code class="instr-code">pid,tid,burst,arrival
+P1,T1,4,0
+P1,T2,2,1
+P2,T1,3,0
+P2,T2,5,2</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 6 -->
+    <div class="instr-step">
+      <div class="instr-step-left"><div class="instr-num">6</div><div class="instr-icon">📊</div></div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Exportar resultados</div>
+        <div class="instr-step-desc">
+          Una vez finalizada la simulación, usa <strong>Export CSV</strong> para descargar un archivo con los resultados detallados por hilo: Burst, Arrival, Start, Finish, Turnaround y Wait, más estadísticas globales en el encabezado.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- /modal instrucciones -->
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATOS GLOBALES
+// ═══════════════════════════════════════════════
+const COLORS = ['#38bdf8','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+let processes = [];
+let procCounter = 0;
+
+// Show/hide Kernel Threads (K) input when HYB model is selected
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('threadModel').addEventListener('change', function () {
+        document.getElementById('kThreadsContainer').style.display =
+            this.value === 'HYB' ? 'flex' : 'none';
+        notify('Modelo cambiado', modelLabel(this.value), 'info');
+    });
+});
+
+// ═══════════════════════════════════════════════
+//  GESTIÓN DE PROCESOS
+// ═══════════════════════════════════════════════
+function addProcess() {
+    procCounter++;
+    const color = COLORS[(procCounter - 1) % COLORS.length];
+    processes.push({
+        pid: `P${procCounter}`,
+        color,
+        threads: [
+            { tid: `T1`, burst: 4, arrival: 0 },
+            { tid: `T2`, burst: 3, arrival: 1 }
+        ]
+    });
+    renderProcessList();
+    notify('Proceso agregado', `P${procCounter} creado con 2 hilos`, 'process');
+}
+
+function addThread(pidIndex) {
+    const proc = processes[pidIndex];
+    const n = proc.threads.length + 1;
+    proc.threads.push({ tid: `T${n}`, burst: Math.floor(Math.random()*4)+1, arrival: Math.floor(Math.random()*3) });
+    renderProcessList();
+    notify('Hilo agregado', `T${n} agregado a ${proc.pid}`, 'process');
+}
+
+function removeProcess(i) {
+    processes.splice(i, 1);
+    renderProcessList();
+}
+
+function renderProcessList() {
+    const list = document.getElementById('processList');
+    if (processes.length === 0) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--fg-muted);font-size:0.85rem;">Agrega un proceso con ＋ Proceso</div>';
+        document.getElementById('st-threads').textContent = '0';
+        return;
+    }
+
+    let totalThreads = 0;
+    list.innerHTML = processes.map((proc, pi) => {
+        totalThreads += proc.threads.length;
+        return `
+        <div class="process-item" style="border-left-color:${proc.color}">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:700;font-size:0.85rem;color:${proc.color}">${proc.pid}</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn-secondary" style="font-size:0.65rem;padding:2px 8px;" onclick="addThread(${pi})">＋ Thread</button>
+                    <span onclick="removeProcess(${pi})" style="cursor:pointer;color:var(--fg-muted);font-size:1.1rem;">×</span>
+                </div>
+            </div>
+            ${proc.threads.map((t, ti) => `
+            <div class="process-inputs" style="margin-top:8px;">
+                <div class="mini-input-group" style="max-width:40px;">
+                    <label>Thread</label>
+                    <input type="text" value="${t.tid}"
+                        onchange="processes[${pi}].threads[${ti}].tid=this.value; renderProcessList();"
+                        style="text-align:center;">
+                </div>
+                <div class="mini-input-group">
+                    <label>Burst</label>
+                    <input type="number" value="${t.burst}" min="1" max="20"
+                        onchange="processes[${pi}].threads[${ti}].burst=Number(this.value)">
+                </div>
+                <div class="mini-input-group">
+                    <label>Arrival</label>
+                    <input type="number" value="${t.arrival}" min="0"
+                        onchange="processes[${pi}].threads[${ti}].arrival=Number(this.value)">
+                </div>
+            </div>
+            `).join('')}
+            <div class="thread-badges" style="margin-top:10px;">
+                ${proc.threads.map(t => `<span class="thread-badge ready">${proc.pid}·${t.tid} READY</span>`).join('')}
+            </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('st-threads').textContent = totalThreads;
+}
+
+// ═══════════════════════════════════════════════
+//  MOTORES POR MODELO DE THREADS
+// ═══════════════════════════════════════════════
+
+// ── ULT: Many-to-One — un solo hilo de kernel, RR secuencial ──
+// Solo un hilo de usuario puede usar la CPU en cada instante.
+// En el Gantt nunca se solapan dos barras al mismo tiempo.
+function runULT(allThreads, quantum) {
+    let threads = allThreads.map(t => ({ ...t, remaining: t.burst, started: false,
+        startTime: null, finishTime: null, waitTime: 0 }));
+    let t = 0, completed = 0, n = threads.length;
+    let timeline = [], queue = [];
+    let ctxSwitches = 0, lastLabel = null, totalIdle = 0;
+
+    while (completed < n) {
+        threads.filter(th => th.arrival <= t && th.remaining > 0 && !queue.includes(th))
+               .forEach(th => { if (!queue.includes(th)) queue.push(th); });
+
+        if (queue.length === 0) {
+            let idleStart = t++;
+            totalIdle++;
+            if (timeline.length && timeline[timeline.length-1].label === 'IDLE')
+                timeline[timeline.length-1].end = t;
+            else
+                timeline.push({ label:'IDLE', color:'transparent', start:idleStart, end:t });
+            lastLabel = 'IDLE';
+            continue;
+        }
+
+        const sel = queue.shift();
+        if (lastLabel && lastLabel !== sel.label && lastLabel !== 'IDLE') ctxSwitches++;
+        if (!sel.started) { sel.started = true; sel.startTime = t; }
+
+        const run = Math.min(sel.remaining, quantum);
+        timeline.push({ label: sel.label, color: sel.color, start: t, end: t + run });
+        lastLabel = sel.label;
+        t += run;
+        sel.remaining -= run;
+
+        threads.filter(th => th.arrival <= t && th.remaining > 0 && !queue.includes(th) && th !== sel)
+               .forEach(th => queue.push(th));
+
+        if (sel.remaining > 0) queue.push(sel);
+        else { sel.finishTime = t; sel.waitTime = (t - sel.arrival) - sel.burst; completed++; }
+    }
+    return { timeline, threads, totalT: t, ctxSwitches, totalIdle };
+}
+
+// ── KLT: One-to-One — cada hilo tiene su propio hilo de kernel ──
+// Los hilos corren en paralelo real desde su arrival. Nunca esperan a otros.
+// En el Gantt varias barras se solapan en el mismo instante de tiempo.
+function runKLT(allThreads) {
+    const threads = allThreads.map(t => ({
+        ...t,
+        started: true,
+        startTime: t.arrival,
+        finishTime: t.arrival + t.burst,
+        waitTime: 0,
+        remaining: 0
+    }));
+    const timeline = threads.map(t => ({
+        label: t.label, color: t.color,
+        start: t.arrival, end: t.finishTime
+    }));
+    const totalT = Math.max(...threads.map(t => t.finishTime));
+    return { timeline, threads, totalT, ctxSwitches: 0, totalIdle: 0 };
+}
+
+// ── HYB: Many-to-Many — K hilos de kernel, planificador multi-core RR ──
+// Hasta K hilos corren en paralelo. Si hay más listos, esperan en cola.
+// En el Gantt se ven hasta K barras solapadas; el resto espera su turno.
+function runHYB(allThreads, quantum, K) {
+    const threads = allThreads.map(t => ({
+        ...t, remaining: t.burst, started: false,
+        startTime: null, finishTime: null, waitTime: 0
+    }));
+    const timeline = [];
+    let t = 0, completed = 0;
+    const n = threads.length;
+    let ctxSwitches = 0;
+
+    let notArrived = [...threads].sort((a, b) => a.arrival - b.arrival);
+    let readyQueue = [];
+    let slots = Array(K).fill(null);
+    let slotEnd = Array(K).fill(0);
+
+    const pullArrivals = (time) => {
+        notArrived = notArrived.filter(th => {
+            if (th.arrival <= time) { readyQueue.push(th); return false; }
+            return true;
+        });
+    };
+
+    pullArrivals(0);
+
+    while (completed < n) {
+        for (let s = 0; s < K; s++) {
+            if (slots[s] === null && readyQueue.length > 0) {
+                const sel = readyQueue.shift();
+                if (!sel.started) { sel.started = true; sel.startTime = t; }
+                const run = Math.min(sel.remaining, quantum);
+                slots[s] = { thread: sel, runTime: run };
+                slotEnd[s] = t + run;
+                timeline.push({ label: sel.label, color: sel.color, start: t, end: t + run });
+            }
+        }
+
+        const activeEnds = slotEnd.filter((_, s) => slots[s] !== null);
+        if (activeEnds.length === 0) {
+            if (notArrived.length > 0) {
+                t = notArrived[0].arrival;
+                pullArrivals(t);
+                continue;
+            }
+            break;
+        }
+
+        const nextT = Math.min(...activeEnds);
+        t = nextT;
+        pullArrivals(t);
+
+        for (let s = 0; s < K; s++) {
+            if (slots[s] !== null && slotEnd[s] === t) {
+                const { thread, runTime } = slots[s];
+                thread.remaining -= runTime;
+                if (thread.remaining <= 0) {
+                    thread.finishTime = t;
+                    thread.waitTime = Math.max(0, (t - thread.arrival) - thread.burst);
+                    completed++;
+                } else {
+                    readyQueue.push(thread);
+                    ctxSwitches++;
+                }
+                slots[s] = null;
+            }
+        }
+    }
+
+    const totalT = Math.max(...threads.map(th => th.finishTime || t));
+    return { timeline, threads, totalT, ctxSwitches, totalIdle: 0 };
+}
+
+// ═══════════════════════════════════════════════
+//  SIMULACIÓN ANIMADA
+// ═══════════════════════════════════════════════
+async function startSimulation() {
+    if (processes.length === 0) { notify('Sin procesos', 'Agrega al menos un proceso antes de simular', 'error'); return; }
+
+    const btn = document.getElementById('btnSimulate');
+    btn.disabled = true; btn.textContent = '⏳ Simulando...';
+
+    const quantum = Number(document.getElementById('quantumInput').value);
+    const model   = document.getElementById('threadModel').value;
+    notify('Simulación iniciada', `Modelo: ${modelLabel(model)} · Quantum: ${quantum}`, 'sim');
+    const K       = Number(document.getElementById('kThreadsInput')?.value || 2);
+    document.getElementById('cpuModel').textContent = modelLabel(model);
+
+    // Flatten threads
+    let allThreads = [];
+    processes.forEach(proc => {
+        proc.threads.forEach(t => {
+            allThreads.push({
+                label:      `${proc.pid}·${t.tid}`,
+                burst:      t.burst,
+                arrival:    t.arrival,
+                color:      proc.color,
+                pid:        proc.pid,
+                tid:        t.tid,
+                burst_orig: t.burst
+            });
+        });
+    });
+
+    let result;
+    if (model === 'KLT')      result = runKLT(allThreads);
+    else if (model === 'HYB') result = runHYB(allThreads, quantum, K);
+    else                      result = runULT(allThreads, quantum);
+
+    const { timeline, threads, totalT, ctxSwitches, totalIdle } = result;
+
+    // ── Stats ──
+    document.getElementById('st-ctx').textContent = ctxSwitches;
+
+    let cpuUtilStr;
+    if (model === 'KLT') {
+        cpuUtilStr = '100% (parallel)';
+    } else if (model === 'HYB') {
+        const totalBurst = threads.reduce((s, th) => s + th.burst, 0);
+        cpuUtilStr = `${Math.min(100, (totalBurst / (K * totalT) * 100)).toFixed(1)}%`;
+    } else {
+        cpuUtilStr = `${((totalT - totalIdle) / totalT * 100).toFixed(1)}%`;
+    }
+    document.getElementById('st-cpu').textContent = cpuUtilStr;
+
+    const avgWt = model === 'KLT'
+        ? '0.0'
+        : (threads.reduce((s, th) => s + th.waitTime, 0) / threads.length).toFixed(1);
+    document.getElementById('st-avg-wt').textContent = avgWt;
+
+    // ── Build Gantt rows ──
+    const UNIT_PX = 34;
+    const uniqueLabels = [...new Set(allThreads.map(t => t.label))];
+    const tArea = document.getElementById('timelineArea');
+    tArea.innerHTML = '';
+
+    // Model info badge
+    const infoBadge = document.createElement('div');
+    infoBadge.style.cssText = 'font-size:0.65rem;color:var(--fg-muted);margin-bottom:6px;padding:4px 8px;background:#1e293b;border-radius:6px;border-left:3px solid var(--accent);';
+    const infos = {
+        ULT: '1 kernel thread — ejecucion estrictamente secuencial, sin paralelismo real',
+        KLT: 'N kernel threads — cada hilo corre en paralelo real desde su llegada (wait=0)',
+        HYB: `K=${K} kernel threads — hasta ${K} hilos en paralelo; el resto espera en cola RR`
+    };
+    infoBadge.textContent = infos[model] || '';
+    tArea.appendChild(infoBadge);
+
+    const colorMap = {};
+    allThreads.forEach(t => colorMap[t.label] = t.color);
+
+    uniqueLabels.forEach(label => {
+        const row = document.createElement('div');
+        row.className = 'timeline-row';
+
+        const lbl = document.createElement('div');
+        lbl.className = 'thread-label';
+        lbl.style.color = colorMap[label];
+        lbl.textContent = label;
+        row.appendChild(lbl);
+
+        const track = document.createElement('div');
+        track.className = 'thread-track';
+        track.style.minWidth = `${totalT * UNIT_PX}px`;
+        track.id = `track-${label.replace('·', '-')}`;
+        row.appendChild(track);
+
+        tArea.appendChild(row);
+    });
+
+    // Time axis
+    const axis = document.getElementById('axisRow');
+    axis.innerHTML = '';
+    for (let i = 0; i <= totalT; i++) {
+        const tick = document.createElement('div');
+        tick.className = 'axis-tick';
+        tick.style.width = `${UNIT_PX}px`;
+        tick.textContent = i;
+        axis.appendChild(tick);
+    }
+
+    const cpuUI = document.getElementById('cpuUI');
+
+    function drawSegment(seg) {
+        const track = document.getElementById(`track-${seg.label.replace('·', '-')}`);
+        if (!track) return;
+        const block = document.createElement('div');
+        block.className        = 'thread-segment';
+        block.style.left       = `${seg.start * UNIT_PX}px`;
+        block.style.width      = `${(seg.end - seg.start) * UNIT_PX - 2}px`;
+        block.style.background = `${seg.color}CC`;
+        block.style.border     = `1px solid ${seg.color}`;
+        block.textContent      = seg.label.split('·')[1];
+        track.appendChild(block);
+    }
+
+    // ── Animation ──
+    if (model === 'ULT') {
+        // Sequential: one segment at a time — only one thread active per instant
+        for (const seg of timeline) {
+            const isIdle = seg.label === 'IDLE';
+            cpuUI.textContent       = isIdle ? 'IDLE' : seg.label;
+            cpuUI.style.borderColor = isIdle ? 'var(--border)' : seg.color;
+            cpuUI.style.boxShadow   = isIdle ? 'none' : `0 0 16px ${seg.color}55`;
+            setActiveState(isIdle ? null : 'running');
+            if (!isIdle) {
+                drawSegment(seg);
+                updateBadges(seg.label, 'running');
+            }
+            await new Promise(r => setTimeout(r, 350));
+        }
+    } else {
+        // Parallel: group events by start time — multiple threads can be active per instant
+        const grouped = {};
+        timeline.forEach(seg => {
+            if (!grouped[seg.start]) grouped[seg.start] = [];
+            grouped[seg.start].push(seg);
+        });
+        const sortedTimes = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+
+        for (const startT of sortedTimes) {
+            const segs = grouped[startT];
+            const active = timeline.filter(s => s.start <= startT && s.end > startT);
+
+            if (active.length > 0) {
+                const dispLabel = model === 'KLT'
+                    ? `${active.length} parallel`
+                    : `${active.length}/${K} active`;
+                cpuUI.textContent       = active.length === 1 ? active[0].label : dispLabel;
+                cpuUI.style.borderColor = active[0].color;
+                cpuUI.style.boxShadow   = `0 0 16px ${active[0].color}55`;
+            }
+            setActiveState('running');
+
+            segs.forEach(seg => {
+                drawSegment(seg);
+                updateBadges(seg.label, 'running');
+            });
+
+            await new Promise(r => setTimeout(r, 350));
+        }
+    }
+
+    // ── Results table ──
+    document.getElementById('resultsTableBody').innerHTML = threads.map(t => `
+        <tr>
+            <td style="color:${t.color};font-weight:bold;">${t.pid}</td>
+            <td style="color:${t.color};">${t.tid}</td>
+            <td>${t.burst_orig}</td>
+            <td>${t.arrival}</td>
+            <td>${t.startTime}</td>
+            <td>${t.finishTime}</td>
+            <td style="color:var(--accent);font-weight:600;">${t.finishTime - t.arrival}</td>
+            <td style="color:var(--warn);font-weight:600;">${t.waitTime}</td>
+        </tr>
+    `).join('');
+
+    threads.forEach(t => updateBadges(t.label, 'finished'));
+    setActiveState('finished');
+    cpuUI.textContent       = 'IDLE';
+    cpuUI.style.borderColor = 'var(--border)';
+    cpuUI.style.boxShadow   = 'none';
+
+    btn.disabled = false; btn.textContent = '▶ Simulate';
+    notify('Simulación completada 🎉', `${threads.length} hilos · Avg Wait: ${avgWt} · CPU: ${cpuUtilStr}`, 'sim');
+}
+
+// ═══════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════
+function setActiveState(state) {
+    ['stNew','stReady','stRunning','stFinished'].forEach(id =>
+        document.getElementById(id).classList.remove('active'));
+    const map = { new:'stNew', ready:'stReady', running:'stRunning', finished:'stFinished' };
+    if (state && map[state]) document.getElementById(map[state]).classList.add('active');
+}
+
+function updateBadges(label, newState) {
+    document.querySelectorAll('.thread-badge').forEach(badge => {
+        if (badge.textContent.trim().startsWith(label)) {
+            badge.className = `thread-badge ${newState}`;
+            badge.textContent = `${label} ${newState.toUpperCase()}`;
+        }
+    });
+}
+
+function modelLabel(m) {
+    return { ULT: 'Many-to-One (ULT)', KLT: 'One-to-One (KLT)', HYB: 'Many-to-Many (Hybrid)' }[m] || m;
+}
+
+function resetAll() {
+    processes = []; procCounter = 0;
+    renderProcessList();
+    document.getElementById('timelineArea').innerHTML =
+        '<div style="text-align:center;color:var(--fg-muted);padding:20px;font-size:0.85rem;"> Add Processes & Click ▶ Simulation</div>';
+    document.getElementById('axisRow').innerHTML = '';
+    document.getElementById('resultsTableBody').innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:var(--fg-muted);padding:20px;">Start Simulation For Results</td></tr>';
+    document.getElementById('cpuUI').textContent = 'IDLE';
+    document.getElementById('cpuUI').style.borderColor = 'var(--border)';
+    document.getElementById('cpuUI').style.boxShadow = 'none';
+    document.getElementById('cpuModel').textContent = '—';
+    ['st-ctx','st-cpu','st-avg-wt'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('st-threads').textContent = '0';
+    setActiveState(null);
+    notify('Reset completado', 'Todos los datos han sido borrados', 'info');
+}
+
+// ── SISTEMA DE NOTIFICACIONES ──
+const NOTIF_ICONS  = { success:'✅', error:'❌', warn:'⚠️', info:'ℹ️', process:'🏁', sim:'🎉', file:'📂', export:'📊', save:'💾' };
+const NOTIF_COLORS = { success:'#10b981', error:'#ef4444', warn:'#f59e0b', info:'#38bdf8', process:'#8b5cf6', sim:'#10b981', file:'#38bdf8', export:'#06b6d4', save:'#a78bfa' };
+const NOTIF_DURATION = 4500;
+
+function notify(title, body = '', type = 'success') {
+    const color = NOTIF_COLORS[type] || NOTIF_COLORS.success;
+    const icon  = NOTIF_ICONS[type]  || NOTIF_ICONS.success;
+    const el = document.createElement('div');
+    el.className = 'sys-notif';
+    el.style.borderLeftColor = color;
+    el.innerHTML = `
+        <div class="notif-icon">${icon}</div>
+        <div class="notif-content">
+            <div class="notif-title">${title}</div>
+            ${body ? `<div class="notif-body">${body}</div>` : ''}
+        </div>
+        <button class="notif-close" onclick="dismissNotif(this.parentElement)">✕</button>
+        <div class="notif-progress" style="background:${color};animation-duration:${NOTIF_DURATION}ms;"></div>`;
+    document.getElementById('notifContainer').appendChild(el);
+    setTimeout(() => dismissNotif(el), NOTIF_DURATION);
+}
+
+function dismissNotif(el) {
+    if (!el || el.classList.contains('notif-out')) return;
+    el.classList.add('notif-out');
+    setTimeout(() => el.remove(), 380);
+}
+
+function showAlert(msg, type) {
+    const map = { success:'success', fault:'error', info:'info', error:'error' };
+    notify(msg, '', map[type] || 'info');
+}
+// ==================== EXPORT TO CSV (CORREGIDO) ====================
+
+function exportThreadsToCSV() {
+    // Obtener los resultados de la tabla - CORREGIDO: usar #resultsTableBody
+    const resultsRows = document.querySelectorAll('#resultsTableBody tr');
+    
+    if (resultsRows.length === 0 || (resultsRows.length === 1 && resultsRows[0].innerText.includes('Sin resultados'))) {
+        notify('Sin resultados', 'Ejecuta una simulación antes de exportar', 'error');
+        return;
+    }
+    
+    // Obtener estadísticas actuales de los elementos que SÍ existen
+    const ctxSwitches = document.getElementById("st-ctx")?.textContent || "0";
+    const cpuUtil = document.getElementById("st-cpu")?.textContent || "—";
+    const avgWait = document.getElementById("st-avg-wt")?.textContent || "—";
+    const totalThreadsElem = document.getElementById("st-threads")?.textContent || "0";
+    
+    // Headers de la tabla (coinciden con tu tabla: Process, Thread, Burst, Arrival, Start, Finish, Turnaround, Wait)
+    const headers = [
+        "Process",
+        "Thread",
+        "Burst Time",
+        "Arrival Time",
+        "Start Time",
+        "Finish Time",
+        "Turnaround Time",
+        "Waiting Time"
+    ];
+    
+    // Recopilar datos de cada thread desde la tabla
+    const threadData = [];
+    resultsRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 8 && cells[0].innerText.trim() !== "Sin resultados aún" && cells[0].innerText.trim() !== "Start Simulation For Results") {
+            threadData.push({
+                processId: cells[0].innerText.trim(),
+                threadId: cells[1].innerText.trim(),
+                burst: cells[2].innerText.trim(),
+                arrival: cells[3].innerText.trim(),
+                startTime: cells[4].innerText.trim(),
+                finishTime: cells[5].innerText.trim(),
+                turnaround: cells[6].innerText.trim(),
+                waiting: cells[7].innerText.trim()
+            });
+        }
+    });
+    
+    if (threadData.length === 0) {
+        notify('Sin datos', 'No hay hilos para exportar. Ejecuta la simulación primero', 'error');
+        return;
+    }
+    
+    // Obtener información del modelo de threads
+    const threadModel = document.getElementById("threadModel")?.value || "ULT";
+    const modelNames = {
+        ULT: "User-Level Threads (Many-to-One)",
+        KLT: "Kernel-Level Threads (One-to-One)",
+        HYB: "Hybrid (Many-to-Many)"
+    };
+    const quantum = document.getElementById("quantumInput")?.value || "3";
+    
+    // Calcular estadísticas adicionales desde los datos
+    let totalBurst = 0;
+    let totalTAT = 0;
+    let totalWT = 0;
+    let completedCount = 0;
+    
+    threadData.forEach(t => {
+        const burst = parseInt(t.burst) || 0;
+        const tat = parseFloat(t.turnaround) || 0;
+        const wt = parseFloat(t.waiting) || 0;
+        totalBurst += burst;
+        if (tat > 0) {
+            totalTAT += tat;
+            totalWT += wt;
+            completedCount++;
+        }
+    });
+    
+    const avgTurnaround = completedCount > 0 ? (totalTAT / completedCount).toFixed(2) : "—";
+    const avgWaiting = completedCount > 0 ? (totalWT / completedCount).toFixed(2) : "—";
+    const completionRate = (completedCount / threadData.length * 100).toFixed(1);
+    
+    // Construir CSV
+    let csvRows = [];
+    
+    // Información del encabezado de simulación
+    csvRows.push(`# Thread Simulation Report`);
+    csvRows.push(`# Generated: ${new Date().toLocaleString()}`);
+    csvRows.push(`# Thread Model: ${modelNames[threadModel] || threadModel}`);
+    csvRows.push(`# Quantum: ${quantum} time units`);
+    csvRows.push(`# Total Threads: ${totalThreadsElem}`);
+    csvRows.push(`# Context Switches: ${ctxSwitches}`);
+    csvRows.push(`# CPU Utilization: ${cpuUtil}`);
+    csvRows.push(`# Average Waiting Time (from simulation): ${avgWait}`);
+    csvRows.push(`# --- Calculated from table data ---`);
+    csvRows.push(`# Completed Threads: ${completedCount}/${threadData.length}`);
+    csvRows.push(`# Average Turnaround Time: ${avgTurnaround}`);
+    csvRows.push(`# Average Waiting Time: ${avgWaiting}`);
+    csvRows.push(`# Completion Rate: ${completionRate}%`);
+    csvRows.push(`# Total Burst Time: ${totalBurst}`);
+    csvRows.push(``); // línea en blanco
+    
+    // Datos de la tabla
+    csvRows.push(headers.join(","));
+    
+    threadData.forEach(t => {
+        csvRows.push([
+            `"${t.processId}"`,
+            `"${t.threadId}"`,
+            t.burst,
+            t.arrival,
+            t.startTime,
+            t.finishTime,
+            t.turnaround,
+            t.waiting
+        ].join(","));
+    });
+    
+    // Añadir estadísticas resumidas al final
+    csvRows.push(``);
+    csvRows.push(`# Summary Statistics`);
+    csvRows.push(`# Total Threads in System,${threadData.length}`);
+    csvRows.push(`# Thread Model,${modelNames[threadModel] || threadModel}`);
+    csvRows.push(`# Quantum,${quantum}`);
+    csvRows.push(`# Context Switches,${ctxSwitches}`);
+    csvRows.push(`# CPU Utilization,${cpuUtil}`);
+    csvRows.push(`# Average Turnaround Time,${avgTurnaround}`);
+    csvRows.push(`# Average Waiting Time,${avgWaiting}`);
+    csvRows.push(`# Completion Rate,${completionRate}%`);
+    csvRows.push(`# Total Burst Time,${totalBurst}`);
+    
+    // Crear y descargar archivo
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `thread_simulation_${threadModel}_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    notify('Resultados exportados 📊', `thread_simulation_${threadModel}_${timestamp}.csv descargado`, 'export');
+}
+
+
+
+// ── Modal instrucciones ──
+function openInstrModal()  { document.getElementById('instrModal').classList.add('open'); }
+function closeInstrModal() { document.getElementById('instrModal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInstrModal(); });
+
+// ── Guardar en localStorage ──
+function saveThreadConfig() {
+    localStorage.setItem('threads_processes',   JSON.stringify(processes));
+    localStorage.setItem('threads_procCounter', procCounter);
+    localStorage.setItem('threads_model',       document.getElementById('threadModel').value);
+    localStorage.setItem('threads_quantum',     document.getElementById('quantumInput').value);
+    localStorage.setItem('threads_K',           document.getElementById('kThreadsInput').value);
+    notify('Configuración guardada', `${processes.length} proceso(s) · Modelo: ${modelLabel(document.getElementById('threadModel').value)}`, 'save');
+}
+
+// ── Cargar desde localStorage al inicio ──
+function loadSavedConfig() {
+    const saved = localStorage.getItem('threads_processes');
+    if (!saved) return false;
+    processes    = JSON.parse(saved);
+    procCounter  = parseInt(localStorage.getItem('threads_procCounter') || '0');
+    const model  = localStorage.getItem('threads_model');
+    const quantum = localStorage.getItem('threads_quantum');
+    const K      = localStorage.getItem('threads_K');
+    if (model)   document.getElementById('threadModel').value  = model;
+    if (quantum) document.getElementById('quantumInput').value = quantum;
+    if (K)       document.getElementById('kThreadsInput').value = K;
+    document.getElementById('kThreadsContainer').style.display =
+        document.getElementById('threadModel').value === 'HYB' ? 'flex' : 'none';
+    renderProcessList();
+    return true;
+}
+
+// ── Cargar procesos desde TXT/CSV ──
+function loadThreadsFromTXT(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+        if (lines.length < 2) { notify('Archivo inválido', 'Debe tener una fila de encabezado y al menos una fila de datos', 'error'); input.value = ''; return; }
+
+        const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const col = name => header.findIndex(h => h === name);
+        const pidIdx     = col('pid');
+        const tidIdx     = col('tid') !== -1 ? col('tid') : col('thread');
+        const burstIdx   = col('burst') !== -1 ? col('burst') : col('bt');
+        const arrivalIdx = col('arrival') !== -1 ? col('arrival') : col('at');
+
+        if (pidIdx === -1 || tidIdx === -1 || burstIdx === -1 || arrivalIdx === -1) {
+            notify('Columnas faltantes', 'El encabezado debe incluir: pid, tid, burst, arrival', 'error');
+            input.value = '';
+            return;
+        }
+
+        const pidMap = {};
+        let errors = 0;
+        const letterRows = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const cells = lines[i].split(',').map(c => c.trim());
+
+            // Detectar letras solo en las columnas numéricas (burst y arrival)
+            const numericCells = [cells[burstIdx], cells[arrivalIdx]].filter(Boolean);
+            const badCells = numericCells.filter(p => /[a-zA-Z]/.test(p));
+            if (badCells.length > 0) {
+                letterRows.push({ row: i + 1, cells: badCells });
+                errors++;
+                continue;
+            }
+
+            const pid    = cells[pidIdx];
+            const tid    = cells[tidIdx];
+            const burst  = Number(cells[burstIdx]);
+            const arrival = Number(cells[arrivalIdx]);
+            if (!pid || !tid || isNaN(burst) || isNaN(arrival) || burst <= 0) { errors++; continue; }
+            if (!pidMap[pid]) pidMap[pid] = [];
+            pidMap[pid].push({ tid, burst, arrival });
+        }
+
+        // Letras encontradas → abortar sin modificar nada
+        if (letterRows.length > 0) {
+            const detail = letterRows.map(r => `fila ${r.row}: "${r.cells.join('", "')}"`).join(' · ');
+            notify('Letras en valores numéricos', `Solo se permiten números — ${detail}`, 'error');
+            input.value = '';
+            return;
+        }
+
+        const pids = Object.keys(pidMap);
+        if (pids.length === 0) { notify('Sin datos válidos', 'No se encontraron filas correctas en el archivo', 'error'); input.value = ''; return; }
+
+        processes = [];
+        procCounter = 0;
+        pids.forEach((pid, idx) => {
+            procCounter++;
+            processes.push({ pid, color: COLORS[(idx) % COLORS.length], threads: pidMap[pid] });
+        });
+
+        renderProcessList();
+        input.value = '';
+        const omitidos = errors > 0 ? ` · ${errors} filas omitidas` : '';
+        notify('Archivo cargado', `${pids.length} proceso(s) importados${omitidos}`, 'file');
+    };
+    reader.readAsText(file);
+}
+
+// ── Init con datos de ejemplo o localStorage ──
+(function init() {
+    if (loadSavedConfig()) return;
+    procCounter = 0;
+    processes = [
+        { pid:'P1', color: COLORS[0], threads: [
+            { tid:'T1', burst:4, arrival:0 },
+            { tid:'T2', burst:2, arrival:1 }
+        ]},
+        { pid:'P2', color: COLORS[1], threads: [
+            { tid:'T1', burst:3, arrival:0 },
+            { tid:'T2', burst:5, arrival:2 }
+        ]}
+    ];
+    procCounter = 2;
+    renderProcessList();
+})();
+</script>
+</body>
+</html>
