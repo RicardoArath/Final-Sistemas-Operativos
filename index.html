@@ -513,11 +513,11 @@ body {
 .main {
   flex: 1;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto auto;
   gap: 8px;
   padding: 12px 16px;
   height: 100vh;
-  overflow: hidden;
+  overflow-y: auto;
   min-width: 0;
 }
 
@@ -655,7 +655,7 @@ h2 {
 .state-diagram {
   background: #070c18; border: 1px solid var(--border); border-radius: 12px;
   padding: 10px 12px; display: flex; flex-direction: column; gap: 7px;
-  overflow: hidden;
+  overflow: hidden; min-height: 200px;
 }
 .diag-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -674,9 +674,9 @@ h2 {
 .states-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 7px; flex: 1; min-height: 0;
+  gap: 7px; flex: 1; min-height: 0; overflow-y: auto;
 }
-@media (max-width: 1050px) { .states-grid { grid-template-columns: repeat(3, 1fr); overflow-y: auto; } }
+@media (max-width: 1050px) { .states-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 700px)  { .states-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .state-card {
@@ -726,14 +726,14 @@ h2 {
 /* ── TABLE ── */
 .table-wrap {
   background: var(--bg-panel); border: 1px solid var(--border);
-  border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 12px; display: flex; flex-direction: column;
 }
 .table-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   flex-wrap: wrap; gap: 6px;
 }
-.t-scroll { flex: 1; overflow-y: auto; }
+.t-scroll { overflow: visible; }
 .ptable { width: 100%; border-collapse: collapse; font-size: 0.73rem; }
 .ptable th {
   position: sticky; top: 0; background: #0a1020; text-align: left;
@@ -758,6 +758,35 @@ h2 {
   .main { padding: 8px 10px; gap: 6px; }
   h2 { font-size: 1rem; }
 }
+
+/* ── MODAL BASE ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); z-index:500; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; animation:fadeIn .2s ease-out; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal-box { background:#111827; border:1px solid var(--border); border-radius:14px; padding:22px 24px; max-width:520px; width:90%; box-shadow:0 24px 60px rgba(0,0,0,.6); animation:modalIn .25s cubic-bezier(.34,1.56,.64,1); position:relative; }
+@keyframes modalIn { from{transform:scale(.92) translateY(12px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+.modal-header { display:flex; align-items:center; gap:11px; margin-bottom:14px; }
+.modal-close { position:absolute; top:14px; right:16px; background:transparent; border:none; color:var(--fg-muted); font-size:1.2rem; cursor:pointer; transition:color .15s; }
+.modal-close:hover { color:var(--fg); }
+
+/* ── MODAL INSTRUCCIONES ── */
+.instr-modal-box { max-width:660px; width:92%; max-height:82vh; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.instr-modal-box::-webkit-scrollbar { width:5px; }
+.instr-modal-box::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+.instr-step { display:flex; gap:13px; padding:12px 0; border-bottom:1px solid rgba(55,65,81,.5); }
+.instr-step:last-child { border-bottom:none; padding-bottom:0; }
+.instr-step-left { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; }
+.instr-num { width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; font-size:.68rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.instr-icon { font-size:1.35rem; line-height:1; }
+.instr-step-body { flex:1; min-width:0; }
+.instr-step-title { font-size:.82rem; font-weight:700; color:var(--fg); margin-bottom:5px; }
+.instr-step-desc { font-size:.74rem; color:var(--fg-muted); line-height:1.65; }
+.instr-step-desc strong { color:var(--fg); font-weight:600; }
+.instr-step-desc em { color:var(--accent); font-style:normal; }
+.instr-code { font-family:'JetBrains Mono',monospace; font-size:.63rem; background:#0f172a; border:1px solid var(--border); border-radius:6px; padding:7px 11px; margin-top:7px; color:var(--accent); display:block; white-space:pre; line-height:1.6; }
+.instr-tag { display:inline-block; background:rgba(56,189,248,.12); border:1px solid rgba(56,189,248,.25); color:var(--accent); font-size:.62rem; font-weight:700; border-radius:4px; padding:1px 6px; margin:2px 2px 0 0; vertical-align:middle; }
+.btn-info { background:rgba(139,92,246,.1); border:1px solid rgba(139,92,246,.35); border-radius:8px; padding:4px 12px; color:#a78bfa; font-size:.75rem; cursor:pointer; transition:all .15s; font-weight:600; white-space:nowrap; }
+.btn-info:hover { background:rgba(139,92,246,.2); }
 </style>
 </head>
 <body>
@@ -809,6 +838,7 @@ h2 {
           <span class="clock-label">T =</span>
           <span class="clock-val" id="gClock">0</span>
         </div>
+        <button class="btn-info" onclick="openInstrModal()">📖 Instrucciones</button>
         <button class="btn-secondary btn-xs" onclick="syncExport()" title="Enviar procesos a Scheduling">
           📤 Sync Scheduling
         </button>
@@ -826,6 +856,7 @@ h2 {
             <button class="btn-primary btn-xs" onclick="addProcess()">+ Agregar</button>
             <button class="btn-secondary btn-xs" onclick="addRandomProcess()">Aleatorio</button>
             <button class="btn-secondary btn-xs" onclick="resetSimulation()">↺ Reset</button>
+            <button class="btn-secondary btn-xs" onclick="document.getElementById('fileIn').click()">📂 TXT</button>
           </div>
         </div>
 
@@ -951,6 +982,144 @@ h2 {
 
   </main>
 </div>
+
+<!-- ══ MODAL INSTRUCCIONES ══ -->
+<div class="modal-overlay" id="instrModal" onclick="if(event.target===this)closeInstrModal()">
+  <div class="modal-box instr-modal-box">
+    <button class="modal-close" onclick="closeInstrModal()">✕</button>
+    <div class="modal-header" style="margin-bottom:16px;">
+      <div style="font-size:2rem;">📖</div>
+      <div>
+        <div style="font-size:1rem;font-weight:700;color:var(--fg);">Instrucciones de uso</div>
+        <div style="font-size:.72rem;color:var(--fg-muted);">Guía paso a paso del simulador de Estados de Procesos</div>
+      </div>
+    </div>
+
+    <!-- Paso 1 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">1</div>
+        <div class="instr-icon">➕</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Crear un proceso</div>
+        <div class="instr-step-desc">
+          Completa los campos del formulario y haz clic en <strong>+ Agregar</strong>:<br><br>
+          • <strong>PID</strong> — nombre único del proceso (ej. P1, Chrome, 101)<br>
+          • <strong>Arrival</strong> — en qué unidad de tiempo llega al sistema (0–100 ms)<br>
+          • <strong>Burst</strong> — cuánto tiempo de CPU necesita para terminar (1–50 ms)<br>
+          • <strong>Priority</strong> — nivel de urgencia: <em>1 = alta prioridad</em>, 10 = baja<br>
+          • <strong>Páginas</strong> — memoria requerida en páginas (1–20)<br><br>
+          El PID se incrementa automáticamente tras cada agregado.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 2 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">2</div>
+        <div class="instr-icon">🎮</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Controles principales</div>
+        <div class="instr-step-desc">
+          • <strong>+ Agregar</strong> — crea el proceso con los valores del formulario<br>
+          • <strong>Aleatorio</strong> — genera un proceso con valores al azar para explorar rápido<br>
+          • <strong>↺ Reset</strong> — elimina todos los procesos y reinicia el reloj a T = 0<br>
+          • <strong>📂 TXT</strong> — carga múltiples procesos desde un archivo de texto
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 3 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">3</div>
+        <div class="instr-icon">🔄</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Cómo funciona la simulación</div>
+        <div class="instr-step-desc">
+          La simulación corre automáticamente cada segundo. Los procesos transicionan entre estados según su progreso:<br><br>
+          <span class="instr-tag" style="color:#6b7280;border-color:#6b728055;background:rgba(107,114,128,.12);">NEW</span> Recién creado — espera su tiempo de llegada<br>
+          <span class="instr-tag" style="color:#60a5fa;border-color:#3b82f655;background:rgba(59,130,246,.12);">READY</span> En cola — espera que el CPU quede libre<br>
+          <span class="instr-tag" style="color:#6ee7b7;border-color:#10b98155;background:rgba(16,185,129,.12);">RUNNING</span> Ejecutándose — el Core 0 lo está procesando<br>
+          <span class="instr-tag" style="color:#fcd34d;border-color:#f59e0b55;background:rgba(245,158,11,.12);">WAITING</span> Bloqueado — esperando una operación de E/S<br>
+          <span class="instr-tag" style="color:#fca5a5;border-color:#ef444455;background:rgba(239,68,68,.12);">TERMINATED</span> Terminado — completó su ejecución
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 4 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">4</div>
+        <div class="instr-icon">🖥️</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">CPU Cores</div>
+        <div class="instr-step-desc">
+          Usa el selector <strong>CPU Cores</strong> (1, 2 o 4) para simular múltiples núcleos:<br><br>
+          • <strong>Core 0 ★</strong> — siempre ejecuta el proceso de mayor prioridad (menor número = mayor prioridad)<br>
+          • <strong>Cores 1+</strong> — visualizan los siguientes procesos en cola READY<br><br>
+          La barra de progreso bajo cada core muestra el porcentaje completado del proceso actual.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 5 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">5</div>
+        <div class="instr-icon">📂</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Cargar procesos desde archivo TXT</div>
+        <div class="instr-step-desc">
+          Presiona <strong>📂 TXT</strong> (o <strong>📄 Cargar TXT</strong>) y selecciona un archivo de texto. Cada línea define un proceso en formato CSV. Las líneas que comienzan con <em>#</em> son comentarios.<br><br>
+          Formato: <code style="font-family:var(--font-mono);background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:var(--accent);padding:1px 5px;border-radius:3px;font-size:.62rem;">PID, Arrival, Burst, Priority, Páginas</code><br>
+          <code class="instr-code"># OS Visual Lab — ejemplo de procesos
+P1,0,5,2,3
+P2,1,3,1,2
+P3,2,8,3,4
+P4,4,4,1,3</code>
+          Usa <strong>⬇ Ejemplo</strong> para descargar una plantilla lista para usar.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 6 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">6</div>
+        <div class="instr-icon">📤</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Sincronizar con Scheduling</div>
+        <div class="instr-step-desc">
+          El botón <strong>📤 Sync Scheduling</strong> exporta todos tus procesos actuales a la página de <em>Scheduling</em>. Desde allí podrás simular algoritmos de planificación como FCFS, SJF, Round Robin, Priority y más, usando los mismos procesos que definiste aquí.
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 7 -->
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">7</div>
+        <div class="instr-icon">📄</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Exportar resultados a CSV</div>
+        <div class="instr-step-desc">
+          El botón <strong>📄 Exportar CSV</strong> en la tabla inferior descarga un archivo con todos los procesos y su estado actual, incluyendo columnas: <em>PID, Arrival, Burst, Remaining, Priority, Pages, State</em>.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- /modal instrucciones -->
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -1331,6 +1500,13 @@ function toast(msg, type='info') {
   c.appendChild(el);
   setTimeout(() => el.remove(), 2600);
 }
+
+// ══════════════════════════════════════════════════════
+//  MODAL INSTRUCCIONES
+// ══════════════════════════════════════════════════════
+function openInstrModal()  { document.getElementById('instrModal').classList.add('open'); }
+function closeInstrModal() { document.getElementById('instrModal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInstrModal(); });
 
 // ══════════════════════════════════════════════════════
 //  INIT
