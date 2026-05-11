@@ -157,7 +157,7 @@ h2 {
 /* ── Timeline / Gantt de threads ── */
 .scroll-container {
     background: #0f172a; border-radius: 16px; padding: 16px; border: 1px solid var(--border);
-    display: flex; flex-direction: column; min-height: 0; flex: 1; gap: 20px; overflow-y: auto;
+    display: flex; flex-direction: column; min-height: 0; flex: 1; gap: 20px; overflow: auto;
 }
 .hw-title {
     font-size: 0.75rem; font-weight: 600; color: var(--accent);
@@ -184,15 +184,22 @@ h2 {
 }
 .timeline-axis {
     display: flex; gap: 0; padding-left: 78px; margin-top: 2px;
+    flex-wrap: nowrap;
 }
 .axis-tick {
     font-size: 0.6rem; color: var(--fg-muted); font-family: 'JetBrains Mono', monospace;
     text-align: right;
+    flex: 0 0 auto;
+    min-width: 34px;
 }
 
 /* ── Tabla de resultados de threads ── */
 .table-wrapper {
-    max-height: 200px; overflow-y: auto;
+    height: 260px;
+    max-height: 260px;
+    min-height: 260px;
+    flex: 0 0 260px;
+    overflow-y: auto;
     border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);
 }
 .results-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
@@ -430,11 +437,11 @@ h2 {
             <option value="HYB">Hibrid — Many-to-Many</option>
           </select>
         </div>
-        <div class="input-group">
+                <div class="input-group" id="quantumGroup">
           <label>Quantum (u.t.)</label>
           <input type="number" id="quantumInput" value="3" min="1" max="10">
         </div>
-        <div class="input-group" id="kThreadsContainer" style="display:none; max-width:140px;">
+                <div class="input-group" id="kThreadsContainer" style="display:none; max-width:140px;">
           <label>Kernel Threads (K)</label>
           <input type="number" id="kThreadsInput" value="2" min="1" max="8">
         </div>
@@ -670,13 +677,22 @@ const COLORS = ['#38bdf8','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14
 let processes = [];
 let procCounter = 0;
 
+function applyModelUI() {
+    const model = document.getElementById('threadModel').value;
+    const kContainer = document.getElementById('kThreadsContainer');
+    const quantumGroup = document.getElementById('quantumGroup');
+    if (kContainer) kContainer.style.display = model === 'HYB' ? 'flex' : 'none';
+    if (quantumGroup) quantumGroup.style.display = model === 'KLT' ? 'none' : 'flex';
+}
+
 // Show/hide Kernel Threads (K) input when HYB model is selected
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('threadModel').addEventListener('change', function () {
-        document.getElementById('kThreadsContainer').style.display =
-            this.value === 'HYB' ? 'flex' : 'none';
+    const modelSelect = document.getElementById('threadModel');
+    modelSelect.addEventListener('change', function () {
+        applyModelUI();
         notify('Modelo cambiado', modelLabel(this.value), 'info');
     });
+    applyModelUI();
 });
 
 // ═══════════════════════════════════════════════
@@ -912,7 +928,8 @@ async function startSimulation() {
 
     const quantum = Number(document.getElementById('quantumInput').value);
     const model   = document.getElementById('threadModel').value;
-    notify('Simulación iniciada', `Modelo: ${modelLabel(model)} · Quantum: ${quantum}`, 'sim');
+    const quantumLabel = model === 'KLT' ? 'N/A' : quantum;
+    notify('Simulación iniciada', `Modelo: ${modelLabel(model)} · Quantum: ${quantumLabel}`, 'sim');
     const K       = Number(document.getElementById('kThreadsInput')?.value || 2);
     document.getElementById('cpuModel').textContent = modelLabel(model);
 
@@ -1000,10 +1017,14 @@ async function startSimulation() {
     // Time axis
     const axis = document.getElementById('axisRow');
     axis.innerHTML = '';
+    const axisWidth = (totalT + 1) * UNIT_PX;
+    axis.style.minWidth = `${axisWidth}px`;
+    axis.style.width = `${axisWidth}px`;
     for (let i = 0; i <= totalT; i++) {
         const tick = document.createElement('div');
         tick.className = 'axis-tick';
         tick.style.width = `${UNIT_PX}px`;
+        tick.style.flex = `0 0 ${UNIT_PX}px`;
         tick.textContent = i;
         axis.appendChild(tick);
     }
@@ -1345,8 +1366,7 @@ function loadSavedConfig() {
     if (model)   document.getElementById('threadModel').value  = model;
     if (quantum) document.getElementById('quantumInput').value = quantum;
     if (K)       document.getElementById('kThreadsInput').value = K;
-    document.getElementById('kThreadsContainer').style.display =
-        document.getElementById('threadModel').value === 'HYB' ? 'flex' : 'none';
+    applyModelUI();
     renderProcessList();
     return true;
 }
@@ -1440,6 +1460,7 @@ function loadThreadsFromTXT(input) {
     ];
     procCounter = 2;
     renderProcessList();
+    applyModelUI();
 })();
 </script>
 </body>
