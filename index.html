@@ -2,43 +2,83 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Simulador SO - Gestion de Procesos</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OS Visual Lab — Procesos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* ── LAYOUT ── */
+body { overflow: hidden; height: 100vh; }
+.dashboard { display: flex; height: 100vh; }
+/*
+ * shared.css — OS Visual Lab
+ * Global responsive styles shared across all pages.
+ * Loaded BEFORE page-specific styles; page styles override as needed.
+ */
+
+/* ════════════════════════════════════════
+   CSS CUSTOM PROPERTIES (Design tokens)
+   ════════════════════════════════════════ */
+:root {
+  /* Colors */
+  --bg:          #0a0c15;
+  --bg-panel:    #111827;
+  --bg-card:     #1f2937;
+  --fg:          #e2e8f0;
+  --fg-muted:    #9ca3af;
+  --accent:      #38bdf8;
+  --accent-dark: #0284c7;
+  --success:     #10b981;
+  --danger:      #ef4444;
+  --warn:        #f59e0b;
+  --info:        #8b5cf6;
+  --border:      #374151;
+
+  /* Layout */
+  --sidebar-w:   200px;
+  --sidebar-w-md:160px;
+  --sidebar-w-sm:48px;
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 20px;
+  --gap-xl: 28px;
+  --radius-sm:  8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* Typography */
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --text-xs:   0.65rem;
+  --text-sm:   0.78rem;
+  --text-base: 0.9rem;
+  --text-lg:   1.1rem;
+  --text-xl:   1.4rem;
+  --text-2xl:  1.8rem;
 }
 
-:root {
-    --bg: #0a0c15;
-    --bg-panel: #111827;
-    --bg-card: #1f2937;
-    --fg: #e2e8f0;
-    --fg-muted: #9ca3af;
-    --accent: #38bdf8;
-    --accent-dark: #0284c7;
-    --success: #10b981;
-    --danger: hsl(0, 84%, 60%);
-    --warn: #f59e0b;
-    --border: #374151;
+/* ════════════════════════════════════════
+   RESET & BASE
+   ════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  min-width: 0; /* prevent flex/grid overflow */
 }
+
+html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background: var(--bg);
-    color: var(--fg);
-    overflow: hidden;
-    height: 100vh;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-.dashboard {
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
-}
-
+/* ════════════════════════════════════════
+   SHARED SIDEBAR (used by all pages)
+   ════════════════════════════════════════ */
 .sidebar {
     width: 200px;
     background: rgba(17, 24, 39, 0.95);
@@ -48,9 +88,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    flex-shrink: 0;
+    position: sticky;
+    top: 0;
     height: 100vh;
-    overflow-y: auto;
 }
 
 .sidebar-header {
@@ -59,9 +99,6 @@ body {
     color: var(--fg);
     margin-bottom: 16px;
     letter-spacing: 0.5px;
-}
-
-.sidebar-header {
     background: linear-gradient(135deg, #fff, var(--accent));
     -webkit-background-clip: text;
     background-clip: text;
@@ -71,1309 +108,1241 @@ body {
     margin-bottom: 12px;
 }
 
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+.sidebar-section-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--fg-muted);
+  font-weight: 700;
+  padding: 4px 8px;
+  opacity: 0.6;
+}
 
 .menu-item {
-    padding: 10px 14px;
-    border-radius: 10px;
-    font-weight: 500;
-    transition: all 0.2s;
-    cursor: pointer;
-    background: transparent;
-    color: var(--fg-muted);
-    font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  transition: all 0.18s;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+
+.menu-item .menu-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.menu-item .menu-text {
+  transition: opacity 0.2s;
 }
 
 .menu-item.active {
-    background: linear-gradient(135deg, rgba(56,189,248,0.15), rgba(139,92,246,0.1));
-    color: var(--accent);
-    border-left: 3px solid var(--accent);
+  background: linear-gradient(135deg, rgba(56,189,248,.15), rgba(139,92,246,.1));
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
 }
 
 .menu-item:hover:not(.active) {
-    background: rgba(255,255,255,0.05);
-    color: var(--fg);
+  background: rgba(255,255,255,.05);
+  color: var(--fg);
 }
 
-/* MAIN: DOS COLUMNAS */
-.main {
-    flex: 1;
-    padding: 20px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    height: 100vh;
-    overflow: hidden;
+/* ════════════════════════════════════════
+   COMMON BUTTONS
+   ════════════════════════════════════════ */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 16px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.18s, transform 0.1s;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-primary:hover  { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  color: var(--fg);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-secondary:hover {
+  background: rgba(56,189,248,.08);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
-/* COLUMNA IZQUIERDA: Simulación + Tabla */
-.col-left {
-    flex: 1.6;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow: hidden;
-    min-width: 0;
+.btn-danger {
+  background: rgba(239,68,68,.15);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  color: var(--danger);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
 }
+.btn-danger:hover { background: rgba(239,68,68,.25); }
 
-/* COLUMNA DERECHA: Agregar procesos */
-.col-right {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow: hidden;
-    min-width: 0;
-}
-
-h2 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, #fff, var(--accent));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    letter-spacing: -0.3px;
-    flex-shrink: 0;
-}
-
-.form-card {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    background: var(--bg-panel);
-    border-radius: 24px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.form-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: flex-end;
-}
-
-.input-group input {
-    background: #0f172a;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-    color: var(--fg);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
+/* ════════════════════════════════════════
+   COMMON INPUTS
+   ════════════════════════════════════════ */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .input-group label {
-    display: block;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-    color: var(--fg-muted);
-    margin-bottom: 6px;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--fg-muted);
 }
 
+.input-group input,
+.input-group select {
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  transition: all 0.18s;
+  width: 100%;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(56,189,248,.18);
+}
+
+.input-group input.input-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px rgba(239,68,68,.18);
+}
+
+.input-hint {
+  font-size: 0.62rem;
+  color: var(--fg-muted);
+  line-height: 1.3;
+}
+
+.input-error-msg {
+  font-size: 0.62rem;
+  color: var(--danger);
+  display: none;
+}
+
+.input-error-msg.visible { display: block; }
+
+/* ════════════════════════════════════════
+   CARDS & PANELS
+   ════════════════════════════════════════ */
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.card-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+/* ════════════════════════════════════════
+   STATUS BADGES
+   ════════════════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 40px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.badge-new        { background: rgba(107,114,128,.25); color: #9ca3af; }
+.badge-ready      { background: rgba(59,130,246,.25);  color: #93c5fd; }
+.badge-running    { background: rgba(16,185,129,.25);  color: #6ee7b7; animation: badge-run 0.8s infinite; }
+.badge-waiting    { background: rgba(245,158,11,.25);  color: #fcd34d; }
+.badge-terminated { background: rgba(239,68,68,.25);   color: #fca5a5; }
+
+@keyframes badge-run {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  50%       { box-shadow: 0 0 0 3px rgba(16,185,129,.3); }
+}
+
+/* ════════════════════════════════════════
+   SCROLLBARS
+   ════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ════════════════════════════════════════
+   RESPONSIVE SIDEBAR
+   ════════════════════════════════════════ */
+@media (max-width: 1280px) {
+  :root { --sidebar-w: 180px; }
+}
+
+@media (max-width: 1024px) {
+  :root { --sidebar-w: 160px; }
+  .menu-item { font-size: 0.8rem; padding: 8px 10px; }
+}
+
+@media (max-width: 820px) {
+  :root { --sidebar-w: var(--sidebar-w-sm); }
+  .sidebar { padding: 16px 6px; gap: 2px; }
+  .sidebar-header { opacity: 0; pointer-events: none; height: 0; padding: 0; margin: 0; border: none; }
+  .sidebar-divider { display: none; }
+  .sidebar-section-label { display: none; }
+  .menu-item .menu-text { display: none; }
+  .menu-item { padding: 10px; justify-content: center; border-radius: 50%; }
+  .menu-item.active { border-left: none; border-radius: var(--radius-sm); }
+}
+
+/* ════════════════════════════════════════
+   RESPONSIVE UTILITIES
+   ════════════════════════════════════════ */
+.flex-row  { display: flex; flex-direction: row; }
+.flex-col  { display: flex; flex-direction: column; }
+.gap-sm    { gap: var(--gap-sm); }
+.gap-md    { gap: var(--gap-md); }
+.gap-lg    { gap: var(--gap-lg); }
+.flex-1    { flex: 1; }
+.min-w-0   { min-width: 0; }
+.overflow-hidden { overflow: hidden; }
+.overflow-auto   { overflow: auto; }
+
+@media (max-width: 768px) {
+  .hide-sm { display: none !important; }
+}
+
+@media (min-width: 769px) {
+  .show-sm { display: none !important; }
+}
+
+/* ════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   ════════════════════════════════════════ */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  animation: toast-in 0.3s ease;
+  max-width: 300px;
+}
+.toast-success { background: rgba(16,185,129,.2);  border: 1px solid var(--success); color: var(--success); }
+.toast-error   { background: rgba(239,68,68,.2);   border: 1px solid var(--danger);  color: var(--danger);  }
+.toast-info    { background: rgba(56,189,248,.15); border: 1px solid var(--accent);  color: var(--accent);  }
+.toast-warn    { background: rgba(245,158,11,.2);  border: 1px solid var(--warn);    color: var(--warn);    }
+
+@keyframes toast-in {
+  from { transform: translateX(80px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ════════════════════════════════════════
+   TOOLTIP
+   ════════════════════════════════════════ */
+[data-tip] {
+  position: relative;
+  cursor: help;
+}
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: var(--fg);
+  font-size: 0.62rem;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 200;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* ════════════════════════════════════════
+   CORE VISUALIZATION (shared style)
+   ════════════════════════════════════════ */
+.core-grid {
+  display: grid;
+  gap: var(--gap-sm);
+}
+.core-grid.cores-1 { grid-template-columns: 1fr; }
+.core-grid.cores-2 { grid-template-columns: repeat(2, 1fr); }
+.core-grid.cores-4 { grid-template-columns: repeat(2, 1fr); }
+.core-grid.cores-8 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 900px) {
+  .core-grid.cores-4 { grid-template-columns: repeat(2, 1fr); }
+  .core-grid.cores-8 { grid-template-columns: repeat(2, 1fr); }
+}
+
+.core-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  text-align: center;
+  min-width: 0;
+}
+.core-box.active {
+  border-color: var(--success);
+  box-shadow: 0 0 12px rgba(16,185,129,.25);
+  animation: core-pulse 1s ease-in-out infinite alternate;
+}
+.core-box.idle {
+  opacity: 0.6;
+}
+@keyframes core-pulse {
+  from { box-shadow: 0 0 6px rgba(16,185,129,.2); }
+  to   { box-shadow: 0 0 18px rgba(16,185,129,.4); }
+}
+
+.core-id {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--fg-muted);
+  font-weight: 700;
+}
+.core-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.core-proc {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--success);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.core-proc.idle-text {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+.core-util-bar {
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.core-util-fill {
+  height: 100%;
+  background: var(--success);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 8px;
+  padding: 12px 16px;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── HEADER ── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; flex-shrink: 0;
+}
+h2 {
+  font-size: clamp(1rem, 2.2vw, 1.5rem); font-weight: 700;
+  background: linear-gradient(135deg, #fff, var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.global-clock {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 12px;
+  font-family: var(--font-mono); font-size: 0.75rem;
+}
+.clock-label { color: var(--fg-muted); }
+.clock-val   { color: var(--accent); font-weight: 700; }
+
+/* ── TOP SECTION: form + cores ── */
+.top-section {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 8px; flex-shrink: 0;
+}
+@media (max-width: 1100px) { .top-section { grid-template-columns: 1fr 170px; } }
+@media (max-width: 860px)  { .top-section { grid-template-columns: 1fr; } }
+
+/* Form card */
+.form-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.form-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 6px;
+}
+.section-label {
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--accent);
+}
+.form-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+.btn-xs { font-size: 0.7rem !important; padding: 4px 10px !important; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px; align-items: start;
+}
+@media (max-width: 1200px) { .form-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 860px)  { .form-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.input-group label { font-size: 0.58rem; letter-spacing: 0.8px; margin-bottom: 3px; }
 .input-group input {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    color: var(--fg);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
-    transition: all 0.2s;
+  padding: 6px 10px; font-size: 0.8rem;
+  border-radius: 7px;
 }
-
-.input-group input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(56,189,248,0.2);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-    border: none;
-    border-radius: 8px;
-    padding: 6px 16px;
-    font-weight: 600;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.8rem;
-    height: 34px;
-}
-
-.btn-primary:hover {
-    opacity: 0.9;
-    transform: scale(0.98);
-}
-
-.legend {
-    background: rgba(31,41,55,0.6);
-    border-radius: 16px;
-    padding: 14px 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-    font-size: 0.8rem;
-    border: 1px solid var(--border);
-    margin-top: 16px;
-    flex-shrink: 0;
-}
-
-.legend span {
-    font-weight: 600;
-    color: var(--accent);
-}
-
-.state-diagram {
-    background: #0f172a;
-    border-radius: 32px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    flex: 1;
-    min-height: 0;
-}
-
-.stats-panel {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    min-height: 140px;
-}
-
-.stat-card {
-    background: linear-gradient(145deg, #1a2538, #111827);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 12px;
-    text-align: center;
-}
-
-.stat-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.stat-label {
-    font-size: 0.65rem;
-    color: var(--fg-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 4px;
-}
-
-.diagram-title {
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--fg-muted);
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.state-container {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 20px;
-}
-
-.state-card {
-    background: linear-gradient(145deg, #1a2538, #111827);
-    border-radius: 28px;
-    padding: 16px 12px;
-    text-align: center;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    border: 1px solid rgba(56,189,248,0.2);
-    transition: all 0.2s;
-    backdrop-filter: blur(4px);
-    display: flex;
-    flex-direction: column;
-    min-height: 220px;
-}
-
-.state-card h3 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 12px;
-    letter-spacing: 1px;
-}
-
-.state-card.new h3 { color: #6b7280; }
-.state-card.ready h3 { color: #3b82f6; }
-.state-card.running h3 { color: var(--success); }
-.state-card.waiting h3 { color: var(--warn); }
-.state-card.terminated h3 { color: var(--danger); }
-
-.process-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: center;
-    flex: 1;
-    overflow-y: auto;
-    max-height: 150px;
-}
-
-.process-controls {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-
-}
-
-.process-list::-webkit-scrollbar {
-    width: 4px;
-}
-.process-list::-webkit-scrollbar-thumb {
-    background: var(--accent);
-    border-radius: 4px;
-}
-
-.process-badge {
-    background: rgba(0,0,0,0.5);
-    border-radius: 40px;
-    padding: 5px 12px;
-    font-size: 0.75rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    backdrop-filter: blur(4px);
-    transition: all 0.3s ease;
-    border-left: 2px solid;
-}
-
-.process-badge.running-pulse {
-    animation: pulse-green 1s ease-in-out infinite;
-}
-
-.process-badge.terminated-pulse {
-    background: rgba(239, 68, 68, 0.4);
-    border-left-color: #ef4444;
-}
-
-.process-badge.waiting-pulse {
-    animation: pulse-yellow 1s ease-in-out infinite;
-}
-
-.process-badge.ready-pulse {
-    animation: pulse-blue 1s ease-in-out infinite;
-}
-
-.process-badge.new-pulse {
-    animation: pulse-gray 1s ease-in-out infinite;
-}
-
-@keyframes pulse-green {
-    0%, 100% { background: rgba(16, 185, 129, 0.3); border-left-color: #10b981; }
-    50% { background: rgba(16, 185, 129, 0.8); border-left-color: #10b981; transform: scale(1.02); }
-}
-
-@keyframes pulse-yellow {
-    0%, 100% { background: rgba(245, 158, 11, 0.3); border-left-color: #f59e0b; }
-    50% { background: rgba(245, 158, 11, 0.8); border-left-color: #f59e0b; transform: scale(1.02); }
-}
-
-@keyframes pulse-blue {
-    0%, 100% { background: rgba(59, 130, 246, 0.3); border-left-color: #3b82f6; }
-    50% { background: rgba(59, 130, 246, 0.8); border-left-color: #3b82f6; transform: scale(1.02); }
-}
-
-@keyframes pulse-gray {
-    0%, 100% { background: rgba(107, 114, 128, 0.3); border-left-color: #6b7280; }
-    50% { background: rgba(107, 114, 128, 0.7); border-left-color: #6b7280; transform: scale(1.02); }
-}
-
-.process-badge .pid { font-weight: 700; }
-.process-badge .details { font-size: 0.65rem; opacity: 0.8; }
-
-.cpu-card {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border-radius: 20px;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-left: 5px solid var(--success);
-    font-family: 'JetBrains Mono', monospace;
-    flex-shrink: 0;
-}
-
-.cpu-label {
-    font-weight: 600;
-    letter-spacing: 1px;
-}
-
-.cpu-status {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--success);
-}
-
-/* Contenedor de la tabla con scroll interno */
-.table-wrapper {
-    flex: 1;
-    min-height: 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg-card);
-    overflow-y: auto;
-    
-}
-
-.table-card {
-    background: var(--bg-panel);
-    border-radius: 24px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.results-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-}
-
-.results-table th {
-    text-align: left;
-    padding: 12px 10px;
-    color: var(--fg-muted);
-    text-transform: uppercase;
-    font-size: 0.6rem;
-    letter-spacing: 0.5px;
-    position: sticky;
-    top: 0;
-    background: #1f2937;
-    z-index: 10;
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-
-.results-table td {
-    padding: 12px 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.results-table tr:hover {
-    background: rgba(255,255,255,0.03);
-}
-
-.control-bar {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-start;
-    flex-shrink: 0;
-    padding-bottom: 20px;
-    
-}
-
-.btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
-    color: var(--fg);
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.75rem;
-}
-
-.btn-secondary:hover {
-    background: rgba(56,189,248,0.1);
-    border-color: var(--accent);
-}
-
-::-webkit-scrollbar {
-    width: 6px;
-}
-::-webkit-scrollbar-track {
-    background: #0f172a;
-}
-::-webkit-scrollbar-thumb {
-    background: var(--accent);
-    border-radius: 4px;
-}
-
-.status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 40px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.two-columns {
-    display: flex;
-    gap: 12px;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.status-new { background: #6b7280; color: white; }
-.status-ready { background: #3b82f6; color: white; }
-.status-running { background: #10b981; color: white; animation: statusPulse 0.8s infinite; }
-.status-waiting { background: #f59e0b; color: white; }
-.status-terminated { background: #ef4444; color: white; }
-
-.process-title {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 1px;
-}
-
-.hw-title { font-size: 0.75rem; font-weight: 600; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
-
-
-.hw-box {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 15px; display: flex; flex-direction: column; align-items: center;
-}
-
-@keyframes statusPulse {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; box-shadow: 0 0 0 3px rgba(16,185,129,0.3); }
-}
-
-.menu-item {
-    display: block; /* 🔥 clave para que se comporte como div */
-    text-decoration: none; /* quitar subrayado */
-}
-
-/* alertas */
-.alert {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    animation: slideIn 0.3s ease-out;
-    z-index: 1000;
-}
-
-.alert-success { background: #10b981; color: white; }
-.alert-error { background: #ef4444; color: white; }
-.alert-info { background: #3b82f6; color: white; }
-
-.file-upload {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-    
-}
-
-
-
-/* ocultar input original */
-.file-upload input[type="file"] {
-    display: none;
-}
+.field-err { font-size: 0.57rem; color: var(--danger); min-height: 13px; margin-top: 1px; }
 
 .file-row {
-    width: 100%;
-    display: block;
-    margin-bottom: 20px
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px solid var(--border);
+  font-size: 0.65rem;
+}
+.file-lbl {
+  background: transparent; border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; color: var(--fg); cursor: pointer; font-size: 0.68rem;
+  transition: all 0.18s; white-space: nowrap;
+}
+.file-lbl:hover { border-color: var(--accent); color: var(--accent); }
+.txt-hint { color: var(--fg-muted); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.txt-hint code {
+  background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.2);
+  color: var(--accent); padding: 1px 5px; border-radius: 3px;
+  font-family: var(--font-mono); font-size: 0.62rem;
 }
 
-/* botón bonito */
-.file-label {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border: 1px solid var(--border);
-    padding: 8px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    color: var(--fg);
-    transition: all 0.2s;
-    font-weight: 600;
-    
+.legend-row {
+  display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.62rem;
+  color: var(--fg-muted);
 }
+.legend-row b { color: var(--accent); }
 
-.file-label:hover {
-    border-color: var(--accent);
-    background: rgba(56,189,248,0.1);
+/* Cores card */
+.cores-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 7px;
 }
-
-/* nombre del archivo (opcional si quieres luego) */
-.file-upload span {
-    font-size: 0.7rem;
-    color: var(--fg-muted);
+.cores-header { display: flex; align-items: center; justify-content: space-between; }
+.cores-select {
+  background: #0f172a; border: 1px solid var(--border); border-radius: 5px;
+  padding: 3px 6px; color: var(--fg); font-size: 0.68rem; cursor: pointer; outline: none;
 }
+.cores-select:focus { border-color: var(--accent); }
 
-/* Metrics Panel */
-.metrics-panel {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 16px;
+.core-box {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 8px; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; text-align: center; transition: border-color 0.3s, box-shadow 0.3s;
 }
-
-.metric-card {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border-radius: 12px;
-    padding: 10px 12px;
-    text-align: center;
-    border-left: 3px solid var(--accent);
+.core-box.active {
+  border-color: var(--success);
+  box-shadow: 0 0 10px rgba(16,185,129,.2);
+  animation: core-anim 1s ease-in-out infinite alternate;
 }
-
-.metric-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
+.core-box.sim-active { border-color: rgba(56,189,248,.3); }
+.core-box.idle-core  { opacity: 0.55; }
+@keyframes core-anim {
+  from { box-shadow: 0 0 5px rgba(16,185,129,.15); }
+  to   { box-shadow: 0 0 14px rgba(16,185,129,.4); }
 }
+.c-id   { font-size: 0.52rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.c-icon { font-size: 1rem; line-height: 1; }
+.c-proc { font-size: 0.68rem; font-family: var(--font-mono); font-weight: 700; color: var(--success); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-proc.idle-t { color: var(--fg-muted); font-weight: 400; }
+.c-bar  { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.c-fill { height: 100%; background: var(--success); transition: width 0.4s; }
+.c-note { font-size: 0.5rem; color: var(--fg-muted); }
 
-.metric-label {
-    font-size: 0.55rem;
-    text-transform: uppercase;
-    color: var(--fg-muted);
-    margin-top: 4px;
-    letter-spacing: 0.5px;
+.cores-leg {
+  display: flex; gap: 8px; font-size: 0.58rem; color: var(--fg-muted);
+  border-top: 1px solid var(--border); padding-top: 5px;
 }
+.cores-leg span { display: flex; align-items: center; gap: 3px; }
+.d-act { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.d-idl { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
 
-/* Pie Chart Container */
-.pie-container {
-    background: #0f172a;
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    margin-top: 12px;
+/* ── STATE DIAGRAM ── */
+.state-diagram {
+  background: #070c18; border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 7px;
+  overflow: hidden;
 }
-
-.pie-title {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    text-align: center;
+.diag-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; gap: 8px; flex-wrap: wrap;
 }
-
-.pie-chart-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    flex-wrap: wrap;
+.diag-title {
+  font-size: 0.58rem; text-transform: uppercase; letter-spacing: 2px; color: var(--fg-muted);
 }
-
-.pie-svg {
-    width: 180px;
-    height: 180px;
-    transform: rotate(-90deg);
+.diag-flow {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.58rem; color: var(--fg-muted); flex-wrap: wrap;
 }
+.diag-flow .fnode { display: flex; align-items: center; gap: 3px; }
+.fnode-dot { width: 7px; height: 7px; border-radius: 50%; }
 
-.pie-legend {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.states-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px; flex: 1; min-height: 0;
 }
+@media (max-width: 1050px) { .states-grid { grid-template-columns: repeat(3, 1fr); overflow-y: auto; } }
+@media (max-width: 700px)  { .states-grid { grid-template-columns: repeat(2, 1fr); } }
 
-.pie-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.7rem;
+.state-card {
+  background: linear-gradient(150deg, #111e35, #0f172a);
+  border: 1px solid rgba(255,255,255,.07); border-radius: 10px;
+  padding: 8px; display: flex; flex-direction: column; gap: 5px; overflow: hidden;
 }
+.state-card.running  { border-color: rgba(16,185,129,.25); background: linear-gradient(150deg, #0b2018, #0f172a); }
+.state-card.waiting  { border-color: rgba(245,158,11,.18); }
+.state-card.terminated { border-color: rgba(239,68,68,.18); }
 
-.pie-color-box {
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
+.sc-head { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.sc-name {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.8px;
 }
+.state-card.new        .sc-name { color: #6b7280; }
+.state-card.ready      .sc-name { color: #60a5fa; }
+.state-card.running    .sc-name { color: var(--success); }
+.state-card.waiting    .sc-name { color: var(--warn); }
+.state-card.terminated .sc-name { color: var(--danger); }
+.sc-count { font-size: 0.58rem; color: var(--fg-muted); font-family: var(--font-mono); }
 
-.pie-color-box.new { background: #6b7280; }
-.pie-color-box.ready { background: #3b82f6; }
-.pie-color-box.running { background: #10b981; }
-.pie-color-box.waiting { background: #f59e0b; }
-.pie-color-box.terminated { background: #ef4444; }
-
-.pie-percent {
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+.pills {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+  gap: 3px; padding-right: 2px;
 }
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+.pill {
+  border-radius: 20px; padding: 3px 8px; font-size: 0.64rem;
+  font-family: var(--font-mono); font-weight: 600; border-left: 2px solid;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: all 0.25s;
 }
+.pill-d { font-size: 0.56rem; opacity: 0.7; }
+.pill-empty { font-size: 0.58rem; color: var(--fg-muted); opacity: 0.4; }
 
-.btn-export {
-    background: linear-gradient(135deg, #10b981, #059669);
-    border: none;
-    border-radius: 8px;
-    padding: 6px 12px;
-    color: white;
-    cursor: pointer;
-    font-size: 0.75rem;
-    transition: all 0.2s;
+.pill.pnew   { background: rgba(107,114,128,.22); border-color: #6b7280; animation: an-gray  1.3s ease-in-out infinite; }
+.pill.pready { background: rgba(59,130,246,.18);  border-color: #3b82f6; animation: an-blue  1.3s ease-in-out infinite; }
+.pill.prun   { background: rgba(16,185,129,.28);  border-color: #10b981; animation: an-green 1s   ease-in-out infinite; }
+.pill.pwait  { background: rgba(245,158,11,.22);  border-color: #f59e0b; animation: an-yell  1.3s ease-in-out infinite; }
+.pill.pterm  { background: rgba(239,68,68,.28);   border-color: #ef4444; }
+
+@keyframes an-green { 0%,100%{background:rgba(16,185,129,.2)}  50%{background:rgba(16,185,129,.45)} }
+@keyframes an-blue  { 0%,100%{background:rgba(59,130,246,.14)} 50%{background:rgba(59,130,246,.32)} }
+@keyframes an-yell  { 0%,100%{background:rgba(245,158,11,.14)} 50%{background:rgba(245,158,11,.30)} }
+@keyframes an-gray  { 0%,100%{background:rgba(107,114,128,.18)} 50%{background:rgba(107,114,128,.32)} }
+
+/* ── TABLE ── */
+.table-wrap {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
 }
-
-.btn-export:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
+.table-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  flex-wrap: wrap; gap: 6px;
 }
+.t-scroll { flex: 1; overflow-y: auto; }
+.ptable { width: 100%; border-collapse: collapse; font-size: 0.73rem; }
+.ptable th {
+  position: sticky; top: 0; background: #0a1020; text-align: left;
+  padding: 7px 10px; color: var(--fg-muted); font-size: 0.58rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  border-bottom: 1px solid var(--border); z-index: 5;
+}
+.ptable td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,.04); font-family: var(--font-mono); }
+.ptable tr:hover td { background: rgba(255,255,255,.02); }
+.sbadge { padding: 2px 8px; border-radius: 20px; font-size: 0.6rem; font-weight: 700; }
+.s-new        { background: rgba(107,114,128,.25); color: #9ca3af; }
+.s-ready      { background: rgba(59,130,246,.25);  color: #93c5fd; }
+.s-running    { background: rgba(16,185,129,.3);   color: #6ee7b7; animation: sbr 0.8s infinite; }
+.s-waiting    { background: rgba(245,158,11,.25);  color: #fcd34d; }
+.s-terminated { background: rgba(239,68,68,.25);   color: #fca5a5; }
+@keyframes sbr { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} 50%{box-shadow:0 0 0 2px rgba(16,185,129,.3)} }
+.del-btn { background: none; border: none; cursor: pointer; color: var(--fg-muted); font-size: 0.8rem; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; }
+.del-btn:hover { color: var(--danger); }
 
+/* ── RESPONSIVE FINE-TUNING ── */
+@media (max-width: 820px) {
+  .main { padding: 8px 10px; gap: 6px; }
+  h2 { font-size: 1rem; }
+}
 </style>
 </head>
 <body>
 
+<div class="toast-container" id="toastCont"></div>
+
 <div class="dashboard">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            OS Visual Lab
+
+  <!-- ════ SIDEBAR ════ -->
+  <nav class="sidebar">
+    <div class="sidebar-header">OS Visual Lab</div>
+    <a class="menu-item active" href="index.html">
+      <span class="menu-text">Procesos</span>
+    </a>
+    <a class="menu-item" href="scheduling.html">
+      <span class="menu-text">Scheduling</span>
+    </a>
+    <a class="menu-item" href="paginacion.html">
+      <span class="menu-text">Paginación</span>
+    </a>
+    <a class="menu-item" href="replacement.html">
+      <span class="menu-text">Reemplazo</span>
+    </a>
+    <a class="menu-item" href="threads.html">
+      <span class="menu-text">Threads</span>
+    </a>
+    <a class="menu-item" href="multicore.html">
+      <span class="menu-text">Multi-Core</span>
+    </a>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Estados</div>
+    <div style="padding:0 6px;display:flex;flex-direction:column;gap:5px;">
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:#6b7280;"><span style="width:7px;height:7px;border-radius:50%;background:#6b7280;flex-shrink:0;"></span>NEW – Recién creado</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:#60a5fa;"><span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;"></span>READY – Esperando CPU</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:#6ee7b7;"><span style="width:7px;height:7px;border-radius:50%;background:#10b981;flex-shrink:0;"></span>RUNNING – En CPU</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:#fcd34d;"><span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>WAITING – E/S bloqueado</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:#fca5a5;"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>TERMINATED – Finalizado</div>
+    </div>
+  </nav>
+
+  <!-- ════ MAIN ════ -->
+  <main class="main">
+
+    <!-- 1. HEADER -->
+    <div class="page-header">
+      <h2>Estados de Procesos</h2>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+        <div class="global-clock">
+          <span class="clock-label">T =</span>
+          <span class="clock-val" id="gClock">0</span>
         </div>
-        <a class="menu-item active" href="index.html">Processes</a>
-        <a class="menu-item" href="scheduling.html">Scheduling</a>
-        <a class="menu-item" href="paginacion.html">Paging</a>
-        <a class="menu-item" href="replacement.html">Replacement</a>
-        <a class="menu-item" href="threads.html">Threads</a>
-        <a class="menu-item" href="multicore.html">Multi-Core</a>
+        <button class="btn-secondary btn-xs" onclick="syncExport()" title="Enviar procesos a Scheduling">
+          📤 Sync Scheduling
+        </button>
+      </div>
     </div>
 
-    <div class="main">
-         <h2>Process States</h2>
-        <div class="metrics-panel">
-    <div class="metric-card">
-        <div class="metric-value" id="metricTotal">0</div>
-        <div class="metric-label">Total Processes</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-value" id="metricAvgTurnaround">—</div>
-        <div class="metric-label">Avg Turnaround</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-value" id="metricThroughput">—</div>
-        <div class="metric-label">Throughput (proc/ms)</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-value" id="metricCpuUsage">0%</div>
-        <div class="metric-label">CPU Usage</div>
-    </div>
-</div>
-        <div class="two-columns">
-            <div class="col-left">
-                
-                <div class="state-diagram">
-                    <div class="hw-title">State Diagram</div>
-                    <div class="diagram-title">LIVE TRANSITIONS</div>
-                    <div class="state-container" id="statesGrid"></div>
-                </div>
+    <!-- 2. FORM + CORES -->
+    <div class="top-section">
 
-                <div class="cpu-card" id="cpuCard">
-                    <span class="cpu-label">CPU (Core 0)</span>
-                    <span class="cpu-status" id="cpuStatus">Free</span>
-                </div>
-
-                <div class="table-card">
-                    <div class="hw-title">Process Table</div>
-                    <div class="table-wrapper">
-                        <table class="results-table">
-                            <thead>
-                                <tr>
-                                    <th>PID</th>
-                                    <th>Arrival</th>
-                                    <th>Burst</th>
-                                    <th>Remaining</th>
-                                    <th>Priority</th>
-                                    <th>Pages</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="processTableBody">
-                                <tr>
-                                    <td colspan="7" style="text-align:center; color:var(--fg-muted); padding: 30px;">
-                                        No processes
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-right">
-                <div class="form-card">
-                    <div class="form-grid">
-                        <div class="hw-title">Process Configuration</div>
-                        
-                        <div class="process-controls">
-                            <div class="control-bar">
-                                <button class="btn-primary" onclick="addProcess()">Add</button>
-                                <button class="btn-secondary" onclick="addRandomProcess()">Add Random Process</button>
-                                <button class="btn-secondary" onclick="resetSimulation()">Reset</button>
-                                <button class="btn-secondary" onclick="exportToCSV()">Export CSV</button>
-                            </div>
-                             <div class="file-row">
-                                <div class="file-upload">
-                                    <label for="fileInput" class="file-label">📄 Load Processes From TXT File</label>
-                                    <input type="file" id="fileInput" accept=".txt" onchange="loadProcessesFromFile(event)">
-                                </div>
-                            </div>
-                            
-
-
-                            <div class="input-group">
-                                <label>PID</label>
-                                <input type="text" id="pid" placeholder="Ex: 101" value="P5">
-                            </div>
-
-                            <div class="input-group">
-                                <label>Arrival Time (ms)</label>
-                                <input type="number" id="arrival" placeholder="Arrival time" value="0">
-                            </div>
-
-                            <div class="input-group">
-                                <label>Burst Time (ms)</label>
-                                <input type="number" id="burst" placeholder="CPU burst" value="5">
-                            </div>
-
-                            <div class="input-group">
-                                <label>Priority (1 = High)</label>
-                                <input type="number" id="priority" placeholder="Priority" value="2">
-                            </div>
-
-                            <div class="input-group">
-                                <label>Number of Pages</label>
-                                <input type="number" id="pages" placeholder="Pages" value="3">
-                            </div>
-
-                            
-                        </div>
-                    </div>
-
-                    
-
-                    <div class="legend">
-                        <div><span>Arrival:</span> Time when the process enters the system (NEW → READY)</div>
-                        <div><span>Burst:</span> Total CPU execution time needed by the process</div>
-                        <div><span>Priority:</span> Lower number = higher priority (1 is highest)</div>
-                        <div><span>Pages:</span> Number of virtual memory pages allocated to the process</div>
-                        <div><span>Remaining:</span> CPU time still needed to complete execution</div>
-                        <div><span>Turnaround Time (TAT):</span> Completion Time - Arrival Time. Measures how long a process waits to finish after entering the system. Lower TAT means better responsiveness.</div>
-                        <div><span>Throughput:</span> Number of processes completed per time unit (processes/ms). Higher throughput = better system efficiency.</div>
-                        
-                    </div>
-                </div>
-            </div>
+      <!-- Form -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <span class="section-label">Nuevo Proceso</span>
+          <div class="form-actions">
+            <button class="btn-primary btn-xs" onclick="addProcess()">+ Agregar</button>
+            <button class="btn-secondary btn-xs" onclick="addRandomProcess()">Aleatorio</button>
+            <button class="btn-secondary btn-xs" onclick="resetSimulation()">↺ Reset</button>
+          </div>
         </div>
+
+        <div class="form-grid">
+          <div class="input-group">
+            <label title="Identificador único del proceso. Ej: P1, Chrome, 101">PID <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="pid" placeholder="P5" maxlength="8" oninput="vf(this,'pid')">
+            <div class="field-err" id="e-pid"></div>
+          </div>
+          <div class="input-group">
+            <label title="Tiempo en que el proceso entra al sistema (ms). Rango: 0–100">Arrival (ms)</label>
+            <input type="number" id="arrival" placeholder="0" min="0" max="100" value="0" oninput="vf(this,'arrival')">
+            <div class="field-err" id="e-arrival"></div>
+          </div>
+          <div class="input-group">
+            <label title="Tiempo total de ejecución en CPU (ms). Rango: 1–50">Burst (ms)</label>
+            <input type="number" id="burst" placeholder="5" min="1" max="50" value="5" oninput="vf(this,'burst')">
+            <div class="field-err" id="e-burst"></div>
+          </div>
+          <div class="input-group">
+            <label title="1 = máxima prioridad, 10 = mínima prioridad">Priority</label>
+            <input type="number" id="priority" placeholder="2" min="1" max="10" value="2" oninput="vf(this,'priority')">
+            <div class="field-err" id="e-priority"></div>
+          </div>
+          <div class="input-group">
+            <label title="Páginas de memoria que requiere el proceso. Rango: 1–20">Páginas</label>
+            <input type="number" id="pages" placeholder="3" min="1" max="20" value="3" oninput="vf(this,'pages')">
+            <div class="field-err" id="e-pages"></div>
+          </div>
+        </div>
+
+        <div class="legend-row">
+          <div><b>Arrival:</b> Llegada al sistema (NEW→READY)</div>
+          <div><b>Burst:</b> CPU necesario (1–50 ms)</div>
+          <div><b>Priority:</b> 1 = alta, 10 = baja</div>
+          <div><b>Remaining:</b> Burst pendiente</div>
+        </div>
+
+        <div class="file-row">
+          <label class="file-lbl" for="fileIn">📄 Cargar TXT</label>
+          <input type="file" id="fileIn" accept=".txt" style="display:none" onchange="loadTXT(event)">
+          <button class="btn-secondary btn-xs" onclick="dlExample()">⬇ Ejemplo</button>
+          <div class="txt-hint">
+            <span>Formato:</span> <code>P1,0,5,2,3</code>
+            <span style="font-size:0.6rem;">→ PID, Arrival, Burst, Priority, Páginas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cores -->
+      <div class="cores-card">
+        <div class="cores-header">
+          <span class="section-label">🖥 CPU Cores</span>
+          <select class="cores-select" id="coresCnt" onchange="changeCores()">
+            <option value="1">1 Core</option>
+            <option value="2">2 Cores</option>
+            <option value="4">4 Cores</option>
+          </select>
+        </div>
+        <div id="coreGrid" style="display:grid;grid-template-columns:1fr;gap:5px;"></div>
+        <div class="cores-leg">
+          <span><span class="d-act"></span> Activo</span>
+          <span><span class="d-idl"></span> Idle</span>
+        </div>
+        <div style="font-size:0.55rem;color:var(--fg-muted);line-height:1.4;border-top:1px solid var(--border);padding-top:5px;">
+          Core 0 ejecuta el proceso con mayor prioridad. Los demás cores visualizan procesos READY en espera.
+        </div>
+      </div>
     </div>
+
+    <!-- 3. STATE DIAGRAM -->
+    <div class="state-diagram">
+      <div class="diag-header">
+        <span class="diag-title">DIAGRAMA DE ESTADOS — TRANSICIONES EN VIVO</span>
+        <div class="diag-flow">
+          <div class="fnode"><span class="fnode-dot" style="background:#6b7280"></span>NEW</div>
+          <span>→</span>
+          <div class="fnode"><span class="fnode-dot" style="background:#3b82f6"></span>READY</div>
+          <span>⇄</span>
+          <div class="fnode"><span class="fnode-dot" style="background:#10b981"></span>RUNNING</div>
+          <span>⇄</span>
+          <div class="fnode"><span class="fnode-dot" style="background:#f59e0b"></span>WAITING</div>
+          <span>→</span>
+          <div class="fnode"><span class="fnode-dot" style="background:#ef4444"></span>TERMINATED</div>
+        </div>
+      </div>
+      <div class="states-grid" id="statesGrid"></div>
+    </div>
+
+    <!-- 4. TABLE -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="section-label">📋 Tabla de Procesos</span>
+        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+          <span id="pCount" style="font-size:0.62rem;color:var(--fg-muted);">0 procesos</span>
+          <button class="btn-secondary btn-xs" onclick="exportCSV()">📄 Exportar CSV</button>
+        </div>
+      </div>
+      <div class="t-scroll">
+        <table class="ptable">
+          <thead>
+            <tr>
+              <th title="Identificador del proceso">PID</th>
+              <th title="Tiempo de llegada al sistema">Arrival</th>
+              <th title="Tiempo total de CPU requerido">Burst</th>
+              <th title="Tiempo restante de ejecución">Restante</th>
+              <th title="Prioridad: 1 = más alta">Priority</th>
+              <th title="Páginas de memoria requeridas">Páginas</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="procTBody">
+            <tr>
+              <td colspan="8" style="text-align:center;color:var(--fg-muted);padding:16px;">
+                No hay procesos. Agrega uno arriba o carga un TXT.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
 </div>
+
 <script>
-let processes = [];
-let globalTime = 0;
+// ══════════════════════════════════════════════════════
+//  STATE (preserving original variable names)
+// ══════════════════════════════════════════════════════
+let processes         = [];
+let globalTime        = 0;
 let currentCpuProcess = null;
-let intervalId = null;
+let intervalId        = null;
 let simulationRunning = true;
+let numCores          = 1;
 
-function showAlert(message, type = "info") {
-    const alert = document.createElement("div");
-    alert.className = `alert alert-${type}`;
-    alert.textContent = message;
+// ══════════════════════════════════════════════════════
+//  VALIDATION
+// ══════════════════════════════════════════════════════
+const VRULES = {
+  pid:      { req: true, max: 8 },
+  arrival:  { min: 0,  max: 100, msg: '0 – 100' },
+  burst:    { min: 1,  max: 50,  msg: '1 – 50 ms' },
+  priority: { min: 1,  max: 10,  msg: '1 (alta) – 10 (baja)' },
+  pages:    { min: 1,  max: 20,  msg: '1 – 20 páginas' }
+};
 
-    document.body.appendChild(alert);
-
-    setTimeout(() => {
-        alert.remove();
-    }, 2000);
+function vf(input, field) {
+  const rule = VRULES[field];
+  const errEl = document.getElementById('e-' + field);
+  let msg = '';
+  if (field === 'pid') {
+    if (!input.value.trim())         msg = 'PID requerido';
+    else if (input.value.length > 8) msg = 'Máx 8 caracteres';
+  } else {
+    const v = parseFloat(input.value);
+    if (input.value === '' || isNaN(v)) msg = rule.msg + ' requerido';
+    else if (v < rule.min || v > rule.max) msg = 'Rango: ' + rule.msg;
+    else if (Math.floor(v) !== v) msg = 'Solo números enteros';
+  }
+  input.classList.toggle('has-error', !!msg);
+  errEl.textContent = msg;
+  return !msg;
 }
 
-// NUEVA VERSIÓN DE CARGA DE ARCHIVO - SIN FETCH
-function loadProcessesFromFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.split("\n");
-
-        let added = 0;
-        let errors = 0;
-
-        for (let line of lines) {
-            line = line.trim();
-            if (!line) continue;
-
-            const parts = line.split(",");
-
-            if (parts.length !== 5) {
-                errors++;
-                continue;
-            }
-
-            let [pid, arrival, burst, priority, pages] = parts;
-
-            pid = pid.trim();
-            arrival = parseInt(arrival);
-            burst = parseInt(burst);
-            priority = parseInt(priority);
-            pages = parseInt(pages);
-
-            if (!pid || processes.some(p => p.pid === pid)) {
-                errors++;
-                continue;
-            }
-
-            if (isNaN(arrival) || isNaN(burst) || isNaN(priority) || isNaN(pages)) {
-                errors++;
-                continue;
-            }
-
-            // 🔥 SIMULACIÓN: Crear proceso directamente sin fetch
-            let newProc = {
-                pid,
-                arrival,
-                burst,
-                remaining: burst,
-                priority,
-                pages,
-                state: "new"
-            };
-
-            processes.push(newProc);
-            added++;
-        }
-
-        renderAll();
-
-        if (added > 0) {
-            showAlert(`${added} processes created from file (simulated)`, "success");
-        }
-
-        if (errors > 0) {
-            showAlert(`${errors} lines failed`, "error");
-        }
-    };
-
-    reader.readAsText(file);
+function validateAll() {
+  return ['pid','arrival','burst','priority','pages'].reduce((ok, f) => {
+    const el = document.getElementById(f);
+    return vf(el, f) && ok;
+  }, true);
 }
 
-// NUEVA VERSIÓN - SIN FETCH
+// ══════════════════════════════════════════════════════
+//  PROCESS MANAGEMENT (original logic, preserved exactly)
+// ══════════════════════════════════════════════════════
 function addProcess() {
-    let pid = document.getElementById("pid").value.trim();
-    let arrival = parseInt(document.getElementById("arrival").value);
-    let burst = parseInt(document.getElementById("burst").value);
-    let priority = parseInt(document.getElementById("priority").value);
-    let pages = parseInt(document.getElementById("pages").value);
+  if (!validateAll()) { toast('Corrige los errores del formulario', 'error'); return; }
 
-    if (!pid) {
-        showAlert("Enter a PID", "error");
-        return;
-    }
+  const pid      = document.getElementById('pid').value.trim();
+  const arrival  = parseInt(document.getElementById('arrival').value);
+  const burst    = parseInt(document.getElementById('burst').value);
+  const priority = parseInt(document.getElementById('priority').value);
+  const pages    = parseInt(document.getElementById('pages').value);
 
-    if (processes.some(p => p.pid === pid)) {
-        showAlert("PID already exists", "error");
-        return;
-    }
+  if (processes.some(p => p.pid === pid)) { toast('PID "' + pid + '" ya existe', 'error'); return; }
 
-    if (isNaN(arrival) || isNaN(burst) || isNaN(priority) || isNaN(pages)) {
-        showAlert("Invalid input values", "error");
-        return;
-    }
+  const newProc = { pid, arrival, burst, remaining: burst, priority, pages, state: 'new', originalBurst: burst };
+  processes.push(newProc);
+  syncLS();
+  renderAll();
+  toast('Proceso ' + pid + ' agregado ✓', 'success');
 
-    // 🔥 SIMULACIÓN: Crear proceso directamente sin backend
-    let newProc = {
-        pid: pid,
-        arrival: arrival,
-        burst: burst,
-        remaining: burst,
-        priority: priority,
-        pages: pages,
-        state: "new"
-    };
-
-    processes.push(newProc);
-    renderAll();
-
-    showAlert(`Process ${pid} created successfully (simulated)`, "success");
+  // Auto-increment PID
+  const m = pid.match(/^([A-Za-z]*)(\d+)$/);
+  if (m) document.getElementById('pid').value = m[1] + (parseInt(m[2]) + 1);
 }
 
 function getNextReadyProcess() {
-    let readyList = processes.filter(p => p.state === "ready");
-    if (readyList.length === 0) return null;
-    readyList.sort((a,b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
-        return a.arrival - b.arrival;
-    });
-    return readyList[0];
+  const rl = processes.filter(p => p.state === 'ready');
+  if (!rl.length) return null;
+  rl.sort((a, b) => a.priority !== b.priority ? a.priority - b.priority : a.arrival - b.arrival);
+  return rl[0];
 }
 
 function tick() {
-    if (!simulationRunning) return;
-    globalTime++;
+  if (!simulationRunning) return;
+  globalTime++;
+  document.getElementById('gClock').textContent = globalTime;
 
-    processes.forEach(p => {
-        if (p.state === "new" && p.arrival <= globalTime) {
-            p.state = "ready";
-        }
-    });
+  processes.forEach(p => {
+    if (p.state === 'new' && p.arrival <= globalTime) p.state = 'ready';
+  });
 
-    if (currentCpuProcess === null) {
-        let next = getNextReadyProcess();
-        if (next) {
-            next.state = "running";
-            currentCpuProcess = next;
-        }
+  if (currentCpuProcess === null) {
+    const next = getNextReadyProcess();
+    if (next) { next.state = 'running'; currentCpuProcess = next; }
+  }
+
+  if (currentCpuProcess) {
+    if (currentCpuProcess.state !== 'running') {
+      currentCpuProcess = null;
+    } else {
+      currentCpuProcess.remaining--;
+      const randomBlock = Math.random() < 0.2;
+      if (currentCpuProcess.remaining <= 0) {
+        currentCpuProcess.state = 'terminated';
+        currentCpuProcess.remaining = 0;
+        currentCpuProcess = null;
+      } else if (randomBlock && currentCpuProcess.state === 'running') {
+        currentCpuProcess.state      = 'waiting';
+        currentCpuProcess.waitCounter = 0;
+        currentCpuProcess = null;
+      }
     }
+  }
 
-    if (currentCpuProcess) {
-        if (currentCpuProcess.state !== "running") {
-            currentCpuProcess = null;
-        } else {
-            currentCpuProcess.remaining--;
-            document.getElementById("cpuStatus").innerHTML =
-`           Running ${currentCpuProcess.pid} (remaining: ${currentCpuProcess.remaining}) | Priority: ${currentCpuProcess.priority}`;
+  if (currentCpuProcess === null) {
+    // idle
+  }
 
-            let randomBlock = Math.random() < 0.2;
-            if (currentCpuProcess.remaining <= 0) {
-                currentCpuProcess.state = "terminated";
-                currentCpuProcess.remaining = 0;
-                currentCpuProcess = null;
-            } 
-            else if (randomBlock && currentCpuProcess.state === "running") {
-                currentCpuProcess.state = "waiting";
-                currentCpuProcess.waitCounter = 0;
-                currentCpuProcess = null;
-            }
-        }
-    } 
-    
-    if (currentCpuProcess === null) {
-        document.getElementById("cpuStatus").innerHTML = "Free (idle)";
+  processes.forEach(p => {
+    if (p.state === 'waiting') {
+      if (!p.waitCounter) p.waitCounter = 0;
+      p.waitCounter++;
+      if (p.waitCounter >= 2 || Math.random() < 0.35) { p.state = 'ready'; delete p.waitCounter; }
     }
+  });
 
-    processes.forEach(p => {
-        if (p.state === "waiting") {
-            if (!p.waitCounter) p.waitCounter = 0;
-            p.waitCounter++;
-            if (p.waitCounter >= 2 || Math.random() < 0.35) {
-                p.state = "ready";
-                delete p.waitCounter;
-            }
-        }
-    });
+  if (currentCpuProcess === null) {
+    const next = getNextReadyProcess();
+    if (next) { next.state = 'running'; currentCpuProcess = next; }
+  }
 
-    if (currentCpuProcess === null) {
-        let next = getNextReadyProcess();
-        if (next) {
-            next.state = "running";
-            currentCpuProcess = next;
-        }
-    }
-
-    renderAll();
+  renderAll();
+  syncLS();
 }
 
+// ══════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════
 function renderAll() {
-    const states = ["new", "ready", "running", "waiting", "terminated"];
-    const stateNames = {
-        new: "NEW", ready: "READY", running: "RUNNING", waiting: "WAITING", terminated: "TERMINATED"
-    };
-    const stateColors = {
-        new: "new", ready: "ready", running: "running", waiting: "waiting", terminated: "terminated"
-    };
-    
-    const container = document.getElementById("statesGrid");
-    if (container) {
-        container.innerHTML = "";
-        states.forEach(stateKey => {
-            const procsInState = processes.filter(p => p.state === stateKey);
-            const card = document.createElement("div");
-            card.className = `state-card ${stateColors[stateKey]}`;
-            card.innerHTML = `
-                <h3>${stateNames[stateKey]}</h3>
-                <div class="process-list" id="state-${stateKey}">
-                    ${procsInState.map(p => {
-                        let pulseClass = "";
-                        if (p.state === "running") pulseClass = "running-pulse";
-                        else if (p.state === "terminated") pulseClass = "terminated-pulse";
-                        else if (p.state === "waiting") pulseClass = "waiting-pulse";
-                        else if (p.state === "ready") pulseClass = "ready-pulse";
-                        else if (p.state === "new") pulseClass = "new-pulse";
-                        return `
-                            <div class="process-badge ${pulseClass}" style="border-left-color: ${p.state === 'running' ? '#10b981' : p.state === 'terminated' ? '#ef4444' : p.state === 'waiting' ? '#f59e0b' : p.state === 'ready' ? '#3b82f6' : '#6b7280'}">
-                                <span class="pid">${p.pid}</span>
-                                <span class="details">Prio:${p.priority} | ${p.remaining}/${p.burst}</span>
-                            </div>
-                        `;
-                    }).join('')}
-                    ${procsInState.length === 0 ? '<span style="font-size:0.7rem; opacity:0.5;">empty</span>' : ''}
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    }
-    
-    const tbody = document.getElementById("processTableBody");
-    if (processes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No processes</td></tr>';
-    } else {
-        tbody.innerHTML = processes.map(p => `
-            <tr>
-                <td><strong>${p.pid}</strong></td>
-                <td>${p.arrival}</td>
-                <td>${p.burst}</td>
-                <td>${p.remaining}</td>
-                <td>${p.priority}</td>
-                <td>${p.pages}</td>
-                <td><span class="status-badge status-${p.state}">${p.state.toUpperCase()}</span></td>
-            </tr>
-        `).join('');
-    }
-    
-    if (currentCpuProcess) {
-        document.getElementById("cpuStatus").innerHTML =
-        `Running ${currentCpuProcess.pid} (remaining: ${currentCpuProcess.remaining}) | Priority: ${currentCpuProcess.priority}`;
-
-    } else {
-        document.getElementById("cpuStatus").innerHTML = "Free - Waiting for processes";
-    }
+  renderStateGrid();
+  renderTable();
+  renderCores();
+  document.getElementById('pCount').textContent = processes.length + ' proceso' + (processes.length !== 1 ? 's' : '');
 }
 
+function renderStateGrid() {
+  const STATES = ['new','ready','running','waiting','terminated'];
+  const NAMES  = { new:'NEW', ready:'READY', running:'RUNNING', waiting:'WAITING', terminated:'TERMINATED' };
+  const PCLS   = { new:'pnew', ready:'pready', running:'prun', waiting:'pwait', terminated:'pterm' };
+  const grid   = document.getElementById('statesGrid');
+  grid.innerHTML = '';
+
+  STATES.forEach(sk => {
+    const procs = processes.filter(p => p.state === sk);
+    const card  = document.createElement('div');
+    card.className = 'state-card ' + sk;
+    card.innerHTML = `
+      <div class="sc-head">
+        <span class="sc-name">${NAMES[sk]}</span>
+        <span class="sc-count">${procs.length}</span>
+      </div>
+      <div class="pills">
+        ${procs.map(p => `
+          <div class="pill ${PCLS[sk]}">
+            <span>${p.pid}</span>
+            <span class="pill-d">${p.remaining}/${p.originalBurst || p.burst}</span>
+          </div>
+        `).join('')}
+        ${!procs.length ? '<span class="pill-empty">vacío</span>' : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('procTBody');
+  if (!processes.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--fg-muted);padding:16px;">No hay procesos. Agrega uno arriba o carga un TXT.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = processes.map((p, i) => `
+    <tr>
+      <td><strong>${p.pid}</strong></td>
+      <td>${p.arrival}</td>
+      <td>${p.originalBurst || p.burst}</td>
+      <td style="color:${p.remaining <= (p.originalBurst||p.burst)*0.3?'var(--warn)':'inherit'}">${p.remaining}</td>
+      <td>${p.priority}</td>
+      <td>${p.pages}</td>
+      <td><span class="sbadge s-${p.state}">${p.state.toUpperCase()}</span></td>
+      <td><button class="del-btn" onclick="killProc(${i})" title="Eliminar proceso">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function killProc(idx) {
+  const pid = processes[idx].pid;
+  if (currentCpuProcess?.pid === pid) currentCpuProcess = null;
+  processes.splice(idx, 1);
+  syncLS();
+  renderAll();
+  toast('Proceso ' + pid + ' eliminado', 'warn');
+}
+
+// ══════════════════════════════════════════════════════
+//  CORES VISUALIZATION
+// ══════════════════════════════════════════════════════
+function changeCores() {
+  numCores = parseInt(document.getElementById('coresCnt').value);
+  const grid = document.getElementById('coreGrid');
+  const cols = numCores <= 2 ? '1fr '.repeat(numCores).trim() : 'repeat(2,1fr)';
+  grid.style.gridTemplateColumns = cols;
+  renderCores();
+}
+
+function renderCores() {
+  const grid = document.getElementById('coreGrid');
+  grid.innerHTML = '';
+  const readyProcs = processes.filter(p => p.state === 'ready');
+
+  for (let i = 0; i < numCores; i++) {
+    let label = 'Idle';
+    let active = false;
+    let simActive = false;
+    let pct = 0;
+
+    if (i === 0 && currentCpuProcess) {
+      label = currentCpuProcess.pid;
+      active = true;
+      pct = Math.round((1 - currentCpuProcess.remaining / (currentCpuProcess.originalBurst || currentCpuProcess.burst)) * 100);
+    } else if (i > 0 && readyProcs[i - 1]) {
+      label = readyProcs[i - 1].pid;
+      simActive = true;
+    }
+
+    const box = document.createElement('div');
+    box.className = 'core-box' + (active ? ' active' : simActive ? ' sim-active' : ' idle-core');
+    box.innerHTML = `
+      <div class="c-id">Core ${i}${i===0?' ★':''}</div>
+      <div class="c-icon">${active ? '⚡' : simActive ? '⏳' : '💤'}</div>
+      <div class="c-proc ${active||simActive?'':'idle-t'}">${label}</div>
+      <div class="c-bar"><div class="c-fill" style="width:${pct}%;background:${active?'var(--success)':simActive?'var(--accent)':'var(--border)'}"></div></div>
+      <div class="c-note">${active ? pct + '% completo' : simActive ? 'en cola' : 'esperando'}</div>
+    `;
+    grid.appendChild(box);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  SIMULATION (original logic preserved)
+// ══════════════════════════════════════════════════════
 function resetSimulation() {
-    processes = [];
-    currentCpuProcess = null;
-    globalTime = 0;
-    simulationRunning = true;
-    renderAll();
-    document.getElementById("cpuStatus").innerHTML = "Free";
-
-    showAlert("Simulation reset", "info");
-
+  processes = [];
+  currentCpuProcess = null;
+  globalTime = 0;
+  simulationRunning = true;
+  syncLS();
+  renderAll();
+  toast('Simulación reiniciada', 'info');
 }
 
 function addRandomProcess() {
-    let basePid = "P" + (Math.floor(Math.random() * 900) + 100);
-    let counter = 1;
-    while (processes.some(p => p.pid === basePid)) {
-        basePid = "P" + (Math.floor(Math.random() * 900) + 100) + counter;
-        counter++;
-    }
-    let arrival = Math.floor(Math.random() * 8);
-    let burst = Math.floor(Math.random() * 7) + 2;
-    let priority = Math.floor(Math.random() * 5) + 1;
-    let pages = Math.floor(Math.random() * 6) + 1;
-    
-    let newProc = {
-        pid: basePid,
-        arrival: arrival,
-        burst: burst,
-        remaining: burst,
-        priority: priority,
-        pages: pages,
-        state: "new"
-    };
-    processes.push(newProc);
-    renderAll();
-
-     showAlert(`Random process ${newProc.pid} added`, "success");
+  let pid = 'P' + (Math.floor(Math.random() * 900) + 100);
+  while (processes.some(p => p.pid === pid)) pid = 'P' + (Math.floor(Math.random() * 900) + 100);
+  const np = {
+    pid, arrival: Math.floor(Math.random() * 8),
+    burst: Math.floor(Math.random() * 7) + 2,
+    priority: Math.floor(Math.random() * 5) + 1,
+    pages: Math.floor(Math.random() * 6) + 1, state: 'new'
+  };
+  np.remaining = np.burst; np.originalBurst = np.burst;
+  processes.push(np);
+  syncLS();
+  renderAll();
+  toast('Proceso aleatorio ' + np.pid + ' agregado', 'success');
 }
 
 function initDemoProcesses() {
-    processes = [];
-    const demo = [
-        { pid: "P1", arrival: 0, burst: 6, priority: 2, pages: 4 },
-        { pid: "P2", arrival: 1, burst: 4, priority: 1, pages: 3 },
-        { pid: "P3", arrival: 2, burst: 5, priority: 3, pages: 5 },
-        { pid: "P4", arrival: 4, burst: 3, priority: 1, pages: 2 }
-    ];
-    demo.forEach(d => {
-        processes.push({
-            ...d,
-            remaining: d.burst,
-            state: "new"
-        });
-    });
-    globalTime = 0;
-    currentCpuProcess = null;
-    console.log("Procesos demo inicializados:", processes);
-    renderAll();
+  processes = [];
+  [{ pid:'P1',arrival:0,burst:6,priority:2,pages:4 },
+   { pid:'P2',arrival:1,burst:4,priority:1,pages:3 },
+   { pid:'P3',arrival:2,burst:5,priority:3,pages:5 },
+   { pid:'P4',arrival:4,burst:3,priority:1,pages:2 }
+  ].forEach(d => processes.push({ ...d, remaining: d.burst, originalBurst: d.burst, state: 'new' }));
+  globalTime = 0; currentCpuProcess = null;
+  syncLS(); renderAll();
 }
 
 function startSimulation() {
-    if (intervalId) clearInterval(intervalId);
-    intervalId = setInterval(() => {
-        tick();
-    }, 1000);
+  if (intervalId) clearInterval(intervalId);
+  intervalId = setInterval(tick, 1000);
 }
 
-function calculateMetrics() {
-    const total = processes.length;
-    if (total === 0) {
-        document.getElementById('metricTotal').textContent = '0';
-        document.getElementById('metricAvgTurnaround').textContent = '—';
-        document.getElementById('metricThroughput').textContent = '—';
-        document.getElementById('metricCpuUsage').textContent = '0%';
-        return;
-    }
-    
-    // Count terminated processes and calculate turnaround times
-    const terminated = processes.filter(p => p.state === 'terminated');
-    const totalTurnaround = terminated.reduce((sum, p) => {
-        // Estimate turnaround: (current time - arrival) or just burst if not finished
-        const finishTime = globalTime;
-        return sum + (finishTime - p.arrival);
-    }, 0);
-    const avgTurnaround = terminated.length > 0 ? (totalTurnaround / terminated.length).toFixed(1) : '—';
-    
-    // Throughput: processes completed per time unit
-    const throughput = terminated.length > 0 ? (terminated.length / globalTime).toFixed(2) : '—';
-    
-    // CPU Usage: time CPU was busy / total time
-    const busyTime = processes.reduce((sum, p) => sum + (p.burst - p.remaining), 0);
-    const cpuUsage = globalTime > 0 ? Math.min(100, (busyTime / globalTime) * 100).toFixed(1) : 0;
-    
-    document.getElementById('metricTotal').textContent = total;
-    document.getElementById('metricAvgTurnaround').textContent = avgTurnaround !== '—' ? avgTurnaround : '—';
-    document.getElementById('metricThroughput').textContent = throughput !== '—' ? throughput : '—';
-    document.getElementById('metricCpuUsage').textContent = `${cpuUsage}%`;
+// ══════════════════════════════════════════════════════
+//  LOCALSTORAGE
+// ══════════════════════════════════════════════════════
+function syncLS() {
+  // Full state for reload
+  localStorage.setItem('os_processes_full', JSON.stringify(processes));
+  localStorage.setItem('os_globalTime', globalTime);
+  // Shared format for scheduling.html
+  localStorage.setItem('os_shared_processes', JSON.stringify(
+    processes.map(p => ({ pid: p.pid, at: p.arrival, bt: p.originalBurst || p.burst, prio: p.priority, pages: p.pages }))
+  ));
 }
 
-
-// Override renderAll to include metrics and pie chart
-const originalRenderAll = renderAll;
-renderAll = function() {
-    originalRenderAll();
-    calculateMetrics();
-    updatePieChart();
-};
-
-// Override tick to update metrics on each tick
-const originalTick = tick;
-tick = function() {
-    originalTick();
-    calculateMetrics();
-    updatePieChart();
-};
-
-// Override resetSimulation
-const originalReset = resetSimulation;
-resetSimulation = function() {
-    originalReset();
-    calculateMetrics();
-    updatePieChart();
-};
-
-// Override addProcess and addRandomProcess to trigger updates
-const originalAddProcess = addProcess;
-addProcess = function() {
-    originalAddProcess();
-    setTimeout(() => { calculateMetrics(); updatePieChart(); }, 100);
-};
-
-const originalAddRandom = addRandomProcess;
-addRandomProcess = function() {
-    originalAddRandom();
-    setTimeout(() => { calculateMetrics(); updatePieChart(); }, 100);
-};
-
-function exportToCSV() {
-    if (processes.length === 0) {
-        showAlert("No processes to export", "error");
-        return;
+function loadLS() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('os_processes_full') || 'null');
+    if (Array.isArray(saved) && saved.length > 0) {
+      processes  = saved;
+      globalTime = parseInt(localStorage.getItem('os_globalTime') || '0');
+      renderAll();
+      return true;
     }
-    
-    // Define CSV headers
-    const headers = [
-        "PID",
-        "Arrival Time (ms)",
-        "Burst Time (ms)",
-        "Remaining Time (ms)",
-        "Priority",
-        "Number of Pages",
-        "Current State",
-        "Turnaround Time (ms)",
-        "Wait Time (est.)"
-    ];
-    
-    // Build data rows
-    const rows = processes.map(p => {
-        // Calculate estimated turnaround (current time - arrival for non-terminated)
-        let turnaround = "—";
-        if (p.state === "terminated") {
-            turnaround = (globalTime - p.arrival).toString();
-        } else if (globalTime >= p.arrival) {
-            turnaround = "in progress";
-        }
-        
-        // Estimate wait time (time spent not running)
-        const executionProgress = p.burst - p.remaining;
-        const estimatedWait = globalTime - p.arrival - executionProgress;
-        
-        return [
-            `"${p.pid}"`, // Wrap in quotes to handle special characters
-            p.arrival.toString(),
-            p.burst.toString(),
-            p.remaining.toString(),
-            p.priority.toString(),
-            p.pages.toString(),
-            p.state.toUpperCase(),
-            turnaround,
-            estimatedWait > 0 ? estimatedWait.toString() : "0"
-        ];
+  } catch(e) {}
+  return false;
+}
+
+function syncExport() {
+  syncLS();
+  toast(processes.length + ' proceso(s) exportados a Scheduling ✓', 'success');
+}
+
+// ══════════════════════════════════════════════════════
+//  FILE I/O
+// ══════════════════════════════════════════════════════
+function loadTXT(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let added = 0, errs = 0;
+    e.target.result.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      const parts = line.split(',');
+      if (parts.length < 5) { errs++; return; }
+      const [pid, arrival, burst, priority, pages] = parts.map(s => s.trim());
+      const a=parseInt(arrival), b=parseInt(burst), pr=parseInt(priority), pg=parseInt(pages);
+      if (!pid || processes.some(p=>p.pid===pid) || isNaN(a)||isNaN(b)||isNaN(pr)||isNaN(pg)) { errs++; return; }
+      if (b<1||b>50||a<0||a>100||pr<1||pr>10||pg<1||pg>20) { errs++; return; }
+      processes.push({ pid,arrival:a,burst:b,remaining:b,originalBurst:b,priority:pr,pages:pg,state:'new' });
+      added++;
     });
-    
-    // Combine headers and rows
-    const csvContent = [
-        headers.join(","),
-        ...rows.map(row => row.join(","))
-    ].join("\n");
-    
-    // Add BOM for UTF-8 encoding (handles special characters)
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-    
-    // Create download link
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `processes_${timestamp}.csv`);
-    
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up URL object
-    URL.revokeObjectURL(url);
-    
-    showAlert(`Exported ${processes.length} processes to CSV`, "success");
+    syncLS(); renderAll();
+    if (added)  toast(added + ' proceso(s) cargados ✓', 'success');
+    if (errs)   toast(errs + ' línea(s) inválidas omitidas', 'warn');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
+function dlExample() {
+  const c = '# Formato: PID,Arrival,Burst,Priority,Páginas\n# Rango: Arrival 0-100 | Burst 1-50 | Priority 1-10 | Páginas 1-20\nP1,0,5,2,3\nP2,1,3,1,2\nP3,2,8,3,4\nP4,4,4,1,3\nP5,5,6,2,5\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([c], { type:'text/plain' }));
+  a.download = 'procesos_ejemplo.txt'; a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-startSimulation();
-initDemoProcesses();
+function exportCSV() {
+  if (!processes.length) { toast('No hay procesos para exportar', 'warn'); return; }
+  const rows = processes.map(p => `${p.pid},${p.arrival},${p.originalBurst||p.burst},${p.remaining},${p.priority},${p.pages},${p.state}`);
+  const csv  = 'PID,Arrival,Burst,Remaining,Priority,Pages,State\n' + rows.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+  a.download = 'procesos.csv'; a.click();
+  URL.revokeObjectURL(a.href);
+  toast('CSV exportado ✓', 'success');
+}
 
+// ══════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════
+function toast(msg, type='info') {
+  const c = document.getElementById('toastCont');
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (!loadLS()) initDemoProcesses();
+  renderCores();
+  startSimulation();
+});
 window.addEventListener('beforeunload', () => {
-    if (intervalId) clearInterval(intervalId);
+  if (intervalId) clearInterval(intervalId);
+  syncLS();
 });
 </script>
 </body>
