@@ -922,7 +922,7 @@ h2 {
           <span><span class="d-idl"></span> Idle</span>
         </div>
         <div style="font-size:0.55rem;color:var(--fg-muted);line-height:1.4;border-top:1px solid var(--border);padding-top:5px;">
-          Core 0 ejecuta el proceso con mayor prioridad. Los demás cores visualizan procesos READY en espera.
+          Cada core ejecuta un proceso en paralelo. Se asignan por prioridad.
         </div>
       </div>
     </div>
@@ -1061,8 +1061,9 @@ h2 {
         <div class="instr-step-title">CPU Cores</div>
         <div class="instr-step-desc">
           Usa el selector <strong>CPU Cores</strong> (1, 2 o 4) para simular múltiples núcleos:<br><br>
-          • <strong>Core 0 ★</strong> — siempre ejecuta el proceso de mayor prioridad (menor número = mayor prioridad)<br>
-          • <strong>Cores 1+</strong> — visualizan los siguientes procesos en cola READY<br><br>
+          • Cada core ejecuta un proceso de forma <strong>independiente y simultánea</strong>.<br>
+          • Los cores se llenan con los procesos de mayor prioridad disponibles en cola READY.<br>
+          • Cuando un core termina su proceso, toma el siguiente de la cola automáticamente.<br><br>
           La barra de progreso bajo cada core muestra el porcentaje completado del proceso actual.
         </div>
       </div>
@@ -1127,7 +1128,7 @@ P4,4,4,1,3</code>
 // ══════════════════════════════════════════════════════
 let processes         = [];
 let globalTime        = 0;
-let currentCpuProcess = null;
+let cpuCores          = [];   // one slot per core; null = idle
 let intervalId        = null;
 let simulationRunning = true;
 let numCores          = 1;
@@ -1205,37 +1206,38 @@ function tick() {
   globalTime++;
   document.getElementById('gClock').textContent = globalTime;
 
+  // NEW → READY when arrival time reached
   processes.forEach(p => {
     if (p.state === 'new' && p.arrival <= globalTime) p.state = 'ready';
   });
 
-  if (currentCpuProcess === null) {
-    const next = getNextReadyProcess();
-    if (next) { next.state = 'running'; currentCpuProcess = next; }
-  }
-
-  if (currentCpuProcess) {
-    if (currentCpuProcess.state !== 'running') {
-      currentCpuProcess = null;
-    } else {
-      currentCpuProcess.remaining--;
-      const randomBlock = Math.random() < 0.2;
-      if (currentCpuProcess.remaining <= 0) {
-        currentCpuProcess.state = 'terminated';
-        currentCpuProcess.remaining = 0;
-        currentCpuProcess = null;
-      } else if (randomBlock && currentCpuProcess.state === 'running') {
-        currentCpuProcess.state      = 'waiting';
-        currentCpuProcess.waitCounter = 0;
-        currentCpuProcess = null;
-      }
+  // Assign ready processes to idle cores
+  for (let i = 0; i < numCores; i++) {
+    if (!cpuCores[i] || cpuCores[i].state !== 'running') {
+      cpuCores[i] = null;
+      const next = getNextReadyProcess();
+      if (next) { next.state = 'running'; cpuCores[i] = next; }
     }
   }
 
-  if (currentCpuProcess === null) {
-    // idle
+  // Advance each running core
+  for (let i = 0; i < numCores; i++) {
+    const proc = cpuCores[i];
+    if (!proc) continue;
+    proc.remaining--;
+    const randomBlock = Math.random() < 0.2;
+    if (proc.remaining <= 0) {
+      proc.state = 'terminated';
+      proc.remaining = 0;
+      cpuCores[i] = null;
+    } else if (randomBlock) {
+      proc.state = 'waiting';
+      proc.waitCounter = 0;
+      cpuCores[i] = null;
+    }
   }
 
+  // WAITING → READY after I/O completes
   processes.forEach(p => {
     if (p.state === 'waiting') {
       if (!p.waitCounter) p.waitCounter = 0;
@@ -1244,9 +1246,12 @@ function tick() {
     }
   });
 
-  if (currentCpuProcess === null) {
-    const next = getNextReadyProcess();
-    if (next) { next.state = 'running'; currentCpuProcess = next; }
+  // Fill cores again now that some processes may have returned to READY
+  for (let i = 0; i < numCores; i++) {
+    if (!cpuCores[i]) {
+      const next = getNextReadyProcess();
+      if (next) { next.state = 'running'; cpuCores[i] = next; }
+    }
   }
 
   renderAll();
@@ -1315,7 +1320,7 @@ function renderTable() {
 
 function killProc(idx) {
   const pid = processes[idx].pid;
-  if (currentCpuProcess?.pid === pid) currentCpuProcess = null;
+  cpuCores = cpuCores.map(c => (c && c.pid === pid) ? null : c);
   processes.splice(idx, 1);
   syncLS();
   renderAll();
@@ -1326,7 +1331,13 @@ function killProc(idx) {
 //  CORES VISUALIZATION
 // ══════════════════════════════════════════════════════
 function changeCores() {
-  numCores = parseInt(document.getElementById('coresCnt').value);
+  const newCount = parseInt(document.getElementById('coresCnt').value);
+  // Release processes from cores being removed back to READY
+  for (let i = newCount; i < numCores; i++) {
+    if (cpuCores[i]) { cpuCores[i].state = 'ready'; }
+  }
+  numCores = newCount;
+  cpuCores = cpuCores.slice(0, numCores);
   const grid = document.getElementById('coreGrid');
   const cols = numCores <= 2 ? '1fr '.repeat(numCores).trim() : 'repeat(2,1fr)';
   grid.style.gridTemplateColumns = cols;
@@ -1336,31 +1347,21 @@ function changeCores() {
 function renderCores() {
   const grid = document.getElementById('coreGrid');
   grid.innerHTML = '';
-  const readyProcs = processes.filter(p => p.state === 'ready');
 
   for (let i = 0; i < numCores; i++) {
-    let label = 'Idle';
-    let active = false;
-    let simActive = false;
-    let pct = 0;
-
-    if (i === 0 && currentCpuProcess) {
-      label = currentCpuProcess.pid;
-      active = true;
-      pct = Math.round((1 - currentCpuProcess.remaining / (currentCpuProcess.originalBurst || currentCpuProcess.burst)) * 100);
-    } else if (i > 0 && readyProcs[i - 1]) {
-      label = readyProcs[i - 1].pid;
-      simActive = true;
-    }
+    const proc = cpuCores[i] || null;
+    const active = !!proc;
+    const label  = proc ? proc.pid : 'Idle';
+    const pct    = proc ? Math.round((1 - proc.remaining / (proc.originalBurst || proc.burst)) * 100) : 0;
 
     const box = document.createElement('div');
-    box.className = 'core-box' + (active ? ' active' : simActive ? ' sim-active' : ' idle-core');
+    box.className = 'core-box' + (active ? ' active' : ' idle-core');
     box.innerHTML = `
-      <div class="c-id">Core ${i}${i===0?' ★':''}</div>
-      <div class="c-icon">${active ? '⚡' : simActive ? '⏳' : '💤'}</div>
-      <div class="c-proc ${active||simActive?'':'idle-t'}">${label}</div>
-      <div class="c-bar"><div class="c-fill" style="width:${pct}%;background:${active?'var(--success)':simActive?'var(--accent)':'var(--border)'}"></div></div>
-      <div class="c-note">${active ? pct + '% completo' : simActive ? 'en cola' : 'esperando'}</div>
+      <div class="c-id">Core ${i}</div>
+      <div class="c-icon">${active ? '⚡' : '💤'}</div>
+      <div class="c-proc ${active ? '' : 'idle-t'}">${label}</div>
+      <div class="c-bar"><div class="c-fill" style="width:${pct}%;background:${active ? 'var(--success)' : 'var(--border)'}"></div></div>
+      <div class="c-note">${active ? pct + '% completo' : 'esperando'}</div>
     `;
     grid.appendChild(box);
   }
@@ -1371,7 +1372,7 @@ function renderCores() {
 // ══════════════════════════════════════════════════════
 function resetSimulation() {
   processes = [];
-  currentCpuProcess = null;
+  cpuCores = [];
   globalTime = 0;
   simulationRunning = true;
   syncLS();
@@ -1402,7 +1403,7 @@ function initDemoProcesses() {
    { pid:'P3',arrival:2,burst:5,priority:3,pages:5 },
    { pid:'P4',arrival:4,burst:3,priority:1,pages:2 }
   ].forEach(d => processes.push({ ...d, remaining: d.burst, originalBurst: d.burst, state: 'new' }));
-  globalTime = 0; currentCpuProcess = null;
+  globalTime = 0; cpuCores = [];
   syncLS(); renderAll();
 }
 
