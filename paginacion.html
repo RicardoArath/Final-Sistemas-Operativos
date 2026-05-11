@@ -1040,12 +1040,11 @@ h2 {
               <input type="number" id="newPgs" value="3" min="1" max="12" style="width:70px;">
             </div>
             <button class="btn-primary btn-xs" onclick="addCustomProcess()">Agregar</button>
-            <button class="btn-secondary btn-xs" onclick="addRandomProcess()">Aleatorio</button>
-            <button class="btn-secondary btn-xs" onclick="resetMemory()">Reiniciar</button>
+          
             <div class="save-load-group">
-              <button class="btn-secondary btn-xs" onclick="saveToLocalStorage()">💾 Guardar</button>
-              <button class="btn-secondary btn-xs" onclick="loadFromLocalStorage()">📂 Cargar</button>
-              <button class="btn-secondary btn-xs" onclick="clearLocalStorage()" style="color:#ef4444;">🗑️ Borrar</button>
+              <button class="btn-secondary btn-xs" onclick="saveToLocalStorage()">💾 Guardar Procesos</button>
+              <button class="btn-secondary btn-xs" onclick="loadFromLocalStorage()">Cargar de Local Storage</button>
+              <button class="btn-secondary btn-xs" onclick="clearLocalStorage()" style="color:#ef4444;">🗑️ Borrar de Local Storage</button>
             </div>
           </div>
           
@@ -1073,15 +1072,13 @@ h2 {
           <div class="proc-panel-hdr">
               <span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);">Procesos y Páginas</span>
               <div style="display:flex;gap:5px;flex-wrap:wrap;">
-                  <div class="ig" style="min-width:60px;"><input type="text" id="newPid" placeholder="PID" style="width:60px;"></div>
-                  <div class="ig" style="min-width:55px;"><input type="number" id="newPgs" value="3" min="1" max="12" style="width:55px;"></div>
-                  <button class="btn-primary btn-xs" onclick="addCustomProcess()">Add</button>
-                  <button class="btn-secondary btn-xs" onclick="addRandomProcess()">Random</button>
-                  <button class="btn-secondary btn-xs" onclick="resetMemory()">Reset</button>
+                  
+                  <button class="btn-secondary btn-xs" onclick="addRandomProcess()">Aleatorio</button>
+                  <button class="btn-secondary btn-xs" onclick="resetMemory()">Reiniciar</button>
                   <button class="btn-secondary btn-xs" onclick="saveConfigManual()">💾 Guardar</button>
-                  <button class="btn-secondary btn-xs" onclick="document.getElementById('loadTxtInputManual').click()">📂 TXT</button>
+                  <button class="btn-secondary btn-xs" onclick="document.getElementById('loadTxtInputManual').click()">📂 Cargar TXT</button>
                   <input type="file" id="loadTxtInputManual" accept=".txt,.csv" style="display:none;" onchange="loadProcessesFromTXTManual(this)">
-                  <button class="btn-secondary btn-xs" onclick="exportToCSVManual()">📄 CSV</button>
+                  <button class="btn-secondary btn-xs" onclick="exportToCSVManual()">📄 Descargar CSV</button>
                   <button class="btn-info btn-xs" onclick="openInstrModal()">Instrucciones</button>
               </div>
           </div>
