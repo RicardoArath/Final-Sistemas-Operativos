@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OS Visual Lab — Comparación de Algoritmos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+/* ══ RESET & TOKENS ══ */
+*, *::before, *::after { box-sizing: border-box; min-width: 0; margin: 0; padding: 0; }
+:root {
+  --bg:          #0a0c15;
+  --bg-panel:    #111827;
+  --bg-card:     #1f2937;
+  --fg:          #e2e8f0;
+  --fg-muted:    #9ca3af;
+  --accent:      #38bdf8;
+  --accent-dark: #0284c7;
+  --success:     #10b981;
+  --danger:      #ef4444;
+  --warn:        #f59e0b;
+  --info:        #8b5cf6;
+  --border:      #374151;
+  --font-body:   'Inter', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+  --text-xs:     0.65rem;
+  --text-sm:     0.78rem;
+  --text-base:   0.9rem;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+}
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ══ LAYOUT ══ */
+.dashboard { display: flex; height: 100vh; }
+
+/* ══ SIDEBAR ══ */
+.sidebar {
+  width: 200px;
+  background: rgba(17,24,39,.95);
+  backdrop-filter: blur(4px);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  font-size: 1rem; font-weight: 700;
+  background: linear-gradient(135deg, #fff, var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.menu-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  font-weight: 500; font-size: var(--text-sm);
+  transition: all .18s; cursor: pointer;
+  text-decoration: none; color: var(--fg-muted);
+}
+.menu-item.active {
+  background: linear-gradient(135deg,rgba(56,189,248,.15),rgba(139,92,246,.1));
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+.menu-item:hover:not(.active) { background: rgba(255,255,255,.05); color: var(--fg); }
+.menu-item .menu-text { transition: opacity .2s; }
+.sidebar-divider { height: 1px; background: var(--border); margin: 8px 0; }
+.sidebar-section-label {
+  font-size: var(--text-xs); text-transform: uppercase;
+  letter-spacing: 1px; color: var(--fg-muted);
+  font-weight: 700; padding: 4px 8px; opacity: .6;
+}
+
+/* ══ MAIN ══ */
+.main {
+  flex: 1;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* ══ BUTTONS ══ */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  border: none; border-radius: var(--radius-sm);
+  padding: 7px 16px; font-weight: 600; color: #fff;
+  cursor: pointer; transition: opacity .18s, transform .1s;
+  font-size: var(--text-sm); font-family: var(--font-body);
+  display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap;
+}
+.btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px; color: var(--fg);
+  cursor: pointer; transition: all .18s;
+  font-size: var(--text-sm); font-family: var(--font-body);
+  display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap;
+}
+.btn-secondary:hover { background: rgba(56,189,248,.08); border-color: var(--accent); color: var(--accent); }
+
+.btn-info {
+  background: rgba(139,92,246,.1);
+  border: 1px solid rgba(139,92,246,.35);
+  border-radius: 8px; padding: 4px 12px;
+  color: #a78bfa; font-size: .75rem;
+  cursor: pointer; transition: all .15s; font-weight: 600;
+}
+.btn-info:hover { background: rgba(139,92,246,.2); }
+
+.btn-xs { font-size: 0.68rem !important; padding: 4px 10px !important; }
+
+/* ══ PAGE HEADER ══ */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; flex-shrink: 0;
+}
+h2 {
+  font-size: clamp(1rem, 2.2vw, 1.5rem); font-weight: 700;
+  background: linear-gradient(135deg, #fff, var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ══ PANELS ══ */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 13px 15px;
+}
+.panel-title {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--accent); margin-bottom: 10px;
+}
+
+/* ══ TOP CONTROLS ══ */
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  flex-shrink: 0;
+}
+@media (max-width: 900px) { .controls-grid { grid-template-columns: 1fr; } }
+
+/* ══ PROCESS IMPORT ══ */
+.import-box {
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, rgba(56,189,248,.06), rgba(139,92,246,.04));
+  border: 1px solid rgba(56,189,248,.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+.import-count {
+  font-size: .72rem; color: var(--accent); font-weight: 600;
+  flex: 1;
+}
+.proc-pills {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  max-height: 72px; overflow-y: auto;
+}
+.proc-pill {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: .65rem;
+  font-family: var(--font-mono);
+  display: flex; align-items: center; gap: 6px;
+}
+.proc-pill-pid { font-weight: 700; }
+.proc-pill-meta { color: var(--fg-muted); }
+
+/* ══ ALGORITHM SELECTOR ══ */
+.algo-checks {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.algo-check-label {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all .18s;
+  font-size: .75rem; font-weight: 600;
+  user-select: none;
+}
+.algo-check-label:hover { border-color: var(--accent); background: rgba(56,189,248,.07); }
+.algo-check-label.checked {
+  border-color: var(--accent);
+  background: rgba(56,189,248,.12);
+  color: var(--accent);
+}
+.algo-check-label input { display: none; }
+.algo-check-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border); flex-shrink: 0;
+  transition: background .15s;
+}
+.algo-check-label.checked .algo-check-dot { background: var(--accent); }
+
+/* Quantum row */
+.quantum-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 8px; flex-wrap: wrap;
+}
+.quantum-row label {
+  font-size: .65rem; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--fg-muted); font-weight: 700;
+}
+.quantum-row input {
+  background: #0f172a; border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 10px;
+  color: var(--fg); font-family: var(--font-mono);
+  font-size: .8rem; width: 70px; outline: none;
+}
+.quantum-row input:focus { border-color: var(--accent); }
+
+/* ══ GANTT SECTION ══ */
+.gantt-section {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.gantt-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.gantt-algo-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.gantt-algo-name {
+  font-size: .78rem; font-weight: 700; color: var(--fg);
+}
+.gantt-badge {
+  font-size: .55rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px;
+  text-transform: uppercase;
+  background: rgba(56,189,248,.15); color: var(--accent);
+  border: 1px solid rgba(56,189,248,.25);
+}
+.gantt-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+.gantt-track {
+  display: flex; align-items: flex-end;
+  min-height: 42px; width: max-content; gap: 0;
+}
+.gantt-seg {
+  display: flex; flex-direction: column; align-items: center;
+  position: relative; height: 34px; min-width: 24px;
+  justify-content: center;
+  font-size: .6rem; font-family: var(--font-mono);
+  font-weight: 700; border-radius: 4px;
+  cursor: default; transition: opacity .15s;
+}
+.gantt-seg:hover { opacity: .85; }
+.gantt-seg.idle { background: rgba(55,65,81,.5); color: var(--fg-muted); }
+.gantt-tick-row {
+  display: flex; align-items: flex-start;
+  width: max-content; padding-top: 2px;
+}
+.gantt-tick {
+  font-size: .52rem; font-family: var(--font-mono);
+  color: var(--fg-muted); min-width: 24px; text-align: left;
+}
+
+/* ══ COMPARISON TABLE ══ */
+.compare-wrap {
+  overflow-x: auto; border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.compare-table {
+  width: 100%; border-collapse: collapse;
+  font-size: .73rem;
+}
+.compare-table th {
+  background: #0a1020;
+  text-align: center;
+  padding: 8px 12px;
+  color: var(--fg-muted);
+  font-size: .58rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .6px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.compare-table th:first-child { text-align: left; }
+.compare-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  text-align: center; font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.compare-table td:first-child {
+  text-align: left; font-weight: 700;
+  font-family: var(--font-body);
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* Winner/loser highlights */
+.cell-best {
+  background: rgba(16,185,129,.12) !important;
+  color: var(--success);
+  font-weight: 700;
+  border-radius: 6px;
+}
+.cell-worst {
+  background: rgba(239,68,68,.08) !important;
+  color: #fca5a5;
+}
+
+/* ══ WINNER BANNER ══ */
+.winner-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(135deg, rgba(16,185,129,.1), rgba(56,189,248,.07));
+  border: 1px solid rgba(16,185,129,.3);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  flex-wrap: wrap;
+}
+.winner-label {
+  font-size: .6rem; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--success);
+  font-weight: 700;
+}
+.winner-algo-chips {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.winner-chip {
+  font-size: .72rem; font-weight: 700;
+  padding: 3px 12px; border-radius: 20px;
+  border: 1px solid;
+}
+
+/* ══ EMPTY STATE ══ */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px;
+  padding: 40px 20px; text-align: center;
+  color: var(--fg-muted);
+}
+.empty-icon { font-size: 2.5rem; opacity: .4; }
+.empty-text { font-size: .8rem; }
+
+/* ══ SCROLLBARS ══ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ══ TOAST ══ */
+.toast-container {
+  position: fixed; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+}
+.toast {
+  padding: 10px 16px; border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: 600;
+  animation: toast-in .3s ease; max-width: 300px;
+}
+.toast-success { background: rgba(16,185,129,.2); border: 1px solid var(--success); color: var(--success); }
+.toast-error   { background: rgba(239,68,68,.2);  border: 1px solid var(--danger);  color: var(--danger); }
+.toast-info    { background: rgba(56,189,248,.15); border: 1px solid var(--accent);  color: var(--accent); }
+.toast-warn    { background: rgba(245,158,11,.2);  border: 1px solid var(--warn);    color: var(--warn); }
+@keyframes toast-in { from { transform: translateX(80px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ══ MODAL ══ */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+  z-index: 500; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; animation: fadeIn .2s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box {
+  background: #111827; border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px 24px;
+  max-width: 680px; width: 92%;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  animation: modalIn .25s cubic-bezier(.34,1.56,.64,1);
+  position: relative; max-height: 85vh; overflow-y: auto;
+}
+@keyframes modalIn { from { transform: scale(.92) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+.modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: transparent; border: none;
+  color: var(--fg-muted); font-size: 1.2rem;
+  cursor: pointer; transition: color .15s;
+}
+.modal-close:hover { color: var(--fg); }
+.modal-header { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+
+/* Instruction step */
+.instr-step {
+  display: flex; gap: 13px;
+  padding: 12px 0; border-bottom: 1px solid rgba(55,65,81,.5);
+}
+.instr-step:last-child { border-bottom: none; padding-bottom: 0; }
+.instr-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff; font-size: .68rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.instr-icon { font-size: 1.35rem; line-height: 1; }
+.instr-step-left { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.instr-step-body { flex: 1; }
+.instr-step-title { font-size: .82rem; font-weight: 700; color: var(--fg); margin-bottom: 5px; }
+.instr-step-desc { font-size: .74rem; color: var(--fg-muted); line-height: 1.65; }
+.instr-step-desc strong { color: var(--fg); font-weight: 600; }
+.instr-step-desc em { color: var(--accent); font-style: normal; }
+
+/* Stats summary row */
+.mini-stats {
+  display: flex; gap: 5px; align-items: center; flex-wrap: wrap;
+  font-size: .62rem; color: var(--fg-muted);
+  margin-top: 4px;
+}
+.mini-stat { font-family: var(--font-mono); color: var(--fg); }
+
+/* ══ SUB-CONFIG PANELS (MLQ / MLFQ) ══ */
+.sub-config {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: none;
+}
+.sub-config.show { display: block; }
+.sub-config-title {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--fg-muted); margin-bottom: 8px;
+}
+.queue-config-grid { display: flex; flex-direction: column; gap: 5px; }
+.queue-config-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card); border-radius: 7px;
+  padding: 6px 10px; border-left: 3px solid;
+}
+.queue-config-label {
+  font-size: .68rem; font-weight: 700; width: 26px; flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.queue-config-select {
+  background: #0f172a; border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 6px;
+  color: var(--fg); font-size: .72rem; outline: none; cursor: pointer;
+}
+.queue-config-select:focus { border-color: var(--accent); }
+.quantum-input-wrap {
+  display: flex; align-items: center; gap: 4px;
+}
+.quantum-input-wrap input {
+  background: #0f172a; border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 6px; width: 44px;
+  color: var(--fg); font-family: var(--font-mono);
+  font-size: .72rem; outline: none; text-align: center;
+}
+.quantum-input-wrap input:focus { border-color: var(--accent); }
+.quantum-input-wrap span { font-size: .6rem; color: var(--fg-muted); }
+
+/* Queue badge in pills */
+.pill-queue {
+  font-size: .6rem; font-weight: 700; padding: 1px 6px;
+  border-radius: 10px; border: 1px solid; cursor: pointer;
+  font-family: var(--font-mono); background: transparent;
+  color: inherit; transition: all .15s;
+}
+.pill-queue:hover { opacity: .75; }
+
+/* Gantt level label */
+.gantt-level-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  display: inline-block; margin-right: 3px;
+}
+
+/* No-results */
+#resultsSection { flex-shrink: 0; }
+
+/* ══ VIEW TOGGLE ══ */
+.active-view {
+  background: rgba(56,189,248,.15) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+.chart-container {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+</style>
+</head>
+<body>
+
+<div class="toast-container" id="toastCont"></div>
+
+<div class="dashboard">
+
+  <!-- ════ SIDEBAR ════ -->
+  <nav class="sidebar">
+    <div class="sidebar-header">OS Visual Lab</div>
+    <a class="menu-item" href="index.html">
+      <span class="menu-text">Processes</span>
+    </a>
+    <a class="menu-item" href="scheduling.html">
+      <span class="menu-text">Scheduling</span>
+    </a>
+    <a class="menu-item" href="paginacion.html">
+      <span class="menu-text">Paging</span>
+    </a>
+    <a class="menu-item" href="replacement.html">
+      <span class="menu-text">Replacement</span>
+    </a>
+    <a class="menu-item" href="threads.html">
+      <span class="menu-text">Threads</span>
+    </a>
+    <a class="menu-item" href="multicore.html">
+      <span class="menu-text">Multi-Core</span>
+    </a>
+    <a class="menu-item active" href="comparacion.html">
+      <span class="menu-text">Comparacion</span>
+    </a>
+    <div class="sidebar-divider"></div>
+  </nav>
+
+  <!-- ════ MAIN ════ -->
+  <main class="main">
+
+    <!-- HEADER -->
+    <div class="page-header">
+      <h2>⚖️ Comparación de Algoritmos</h2>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-info" onclick="openInstrModal()">📖 Instrucciones</button>
+        <button class="btn-primary" onclick="runComparison()" id="btnCompare" disabled>
+          ▶ Comparar Algoritmos
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls-grid">
+
+      <!-- Procesos -->
+      <div class="panel">
+        <div class="panel-title">📋 Procesos a comparar</div>
+
+        <div class="import-box" id="importBox">
+          <span class="import-count" id="importCount">Sin procesos cargados</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn-secondary btn-xs" onclick="loadFromLS()">📥 Cargar desde Procesos</button>
+            <button class="btn-secondary btn-xs" onclick="loadFromScheduling()">📥 Cargar desde Scheduling</button>
+            <button class="btn-secondary btn-xs" onclick="clearProcs()">✕ Limpiar</button>
+          </div>
+        </div>
+
+        <div class="proc-pills" id="procPills" style="margin-top:8px;"></div>
+
+        <!-- Manual add -->
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--fg-muted);margin-bottom:6px;">Agregar proceso manualmente</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:.55rem;color:var(--fg-muted);text-transform:uppercase;font-weight:700;" title="Solo ingresa el número — la P se agrega automáticamente. Ej: escribe 1 → P1">PID</label>
+              <input id="mPid" type="text" placeholder="P1" maxlength="8"
+                oninput="filterPID(this)"
+                title="Solo se aceptan números — la P se pone sola"
+                style="background:#0f172a;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--fg);font-family:var(--font-mono);font-size:.75rem;width:60px;outline:none;">
+              <span style="font-size:.5rem;color:var(--fg-muted);">Solo se aceptan números</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:.55rem;color:var(--fg-muted);text-transform:uppercase;font-weight:700;">Arrival</label>
+              <input id="mArrival" type="number" value="0" min="0" max="100"
+                onkeydown="blockNeg(event)" oninput="clampMin(this,0)"
+                style="background:#0f172a;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--fg);font-family:var(--font-mono);font-size:.75rem;width:60px;outline:none;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:.55rem;color:var(--fg-muted);text-transform:uppercase;font-weight:700;">Burst</label>
+              <input id="mBurst" type="number" value="5" min="1" max="50"
+                onkeydown="blockNeg(event)" oninput="clampMin(this,1)"
+                style="background:#0f172a;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--fg);font-family:var(--font-mono);font-size:.75rem;width:60px;outline:none;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="font-size:.55rem;color:var(--fg-muted);text-transform:uppercase;font-weight:700;">Priority</label>
+              <input id="mPriority" type="number" value="2" min="1" max="10"
+                onkeydown="blockNeg(event)" oninput="clampMin(this,1)"
+                style="background:#0f172a;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--fg);font-family:var(--font-mono);font-size:.75rem;width:60px;outline:none;">
+            </div>
+            <button class="btn-primary btn-xs" onclick="addManualProc()" style="margin-bottom:0;">+ Agregar</button>
+            <button class="btn-secondary btn-xs" onclick="addRandomProc()" style="margin-bottom:0;">🎲 Aleatorio</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Algoritmos -->
+      <div class="panel">
+        <div class="panel-title">🔧 Seleccionar algoritmos</div>
+        <div class="algo-checks" id="algoChecks">
+          <!-- populated by JS -->
+        </div>
+        <div class="quantum-row" id="quantumRow" style="display:none;">
+          <label>Quantum (RR)</label>
+          <input type="number" id="rrQuantum" value="2" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+          <span style="font-size:.62rem;color:var(--fg-muted);">unidades de tiempo</span>
+        </div>
+
+        <!-- MLQ CONFIG -->
+        <div class="sub-config" id="mlqConfigPanel">
+          <div class="sub-config-title">Configuración de colas — MLQ</div>
+          <div class="queue-config-grid">
+            <div class="queue-config-row" style="border-color:#f59e0b">
+              <span class="queue-config-label" style="color:#f59e0b">Q1</span>
+              <select class="queue-config-select" id="mlqQ1Algo" onchange="onMlqAlgoChange(1)">
+                <option value="FCFS">FCFS</option><option value="SJF">SJF</option>
+                <option value="RR">Round Robin</option><option value="Priority">Priority</option>
+              </select>
+              <div id="mlqQ1QWrap" class="quantum-input-wrap" style="display:none;">
+                <span>q=</span><input type="number" id="mlqQ1Q" value="2" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+              </div>
+            </div>
+            <div class="queue-config-row" style="border-color:#60a5fa">
+              <span class="queue-config-label" style="color:#60a5fa">Q2</span>
+              <select class="queue-config-select" id="mlqQ2Algo" onchange="onMlqAlgoChange(2)">
+                <option value="FCFS">FCFS</option><option value="SJF">SJF</option>
+                <option value="RR" selected>Round Robin</option><option value="Priority">Priority</option>
+              </select>
+              <div id="mlqQ2QWrap" class="quantum-input-wrap" style="display:flex;">
+                <span>q=</span><input type="number" id="mlqQ2Q" value="2" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+              </div>
+            </div>
+            <div class="queue-config-row" style="border-color:#9ca3af">
+              <span class="queue-config-label" style="color:#9ca3af">Q3</span>
+              <select class="queue-config-select" id="mlqQ3Algo" onchange="onMlqAlgoChange(3)">
+                <option value="FCFS" selected>FCFS</option><option value="SJF">SJF</option>
+                <option value="RR">Round Robin</option><option value="Priority">Priority</option>
+              </select>
+              <div id="mlqQ3QWrap" class="quantum-input-wrap" style="display:none;">
+                <span>q=</span><input type="number" id="mlqQ3Q" value="2" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+              </div>
+            </div>
+          </div>
+          <div style="font-size:.58rem;color:var(--fg-muted);margin-top:6px;">Asignación automática: prio 1–3 → Q1 · 4–6 → Q2 · 7–10 → Q3</div>
+        </div>
+
+        <!-- MLFQ CONFIG -->
+        <div class="sub-config" id="mlfqConfigPanel">
+          <div class="sub-config-title">Configuración de niveles — MLFQ</div>
+          <div class="queue-config-grid">
+            <div class="queue-config-row" style="border-color:#38bdf8">
+              <span class="queue-config-label" style="color:#38bdf8">L1</span>
+              <select class="queue-config-select" id="mlfqL1Algo" onchange="onMlfqAlgoChange(1)">
+                <option value="RR" selected>Round Robin</option><option value="FCFS">FCFS</option>
+                <option value="SJF">SJF</option><option value="Priority">Priority</option>
+              </select>
+              <div id="mlfqL1QWrap" class="quantum-input-wrap" style="display:flex;">
+                <span>q=</span><input type="number" id="mlfqL1Q" value="2" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+              </div>
+            </div>
+            <div class="queue-config-row" style="border-color:#8b5cf6">
+              <span class="queue-config-label" style="color:#8b5cf6">L2</span>
+              <select class="queue-config-select" id="mlfqL2Algo" onchange="onMlfqAlgoChange(2)">
+                <option value="RR" selected>Round Robin</option><option value="FCFS">FCFS</option>
+                <option value="SJF">SJF</option><option value="Priority">Priority</option>
+              </select>
+              <div id="mlfqL2QWrap" class="quantum-input-wrap" style="display:flex;">
+                <span>q=</span><input type="number" id="mlfqL2Q" value="4" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+              </div>
+            </div>
+            <div class="queue-config-row" style="border-color:#9ca3af">
+              <span class="queue-config-label" style="color:#9ca3af">L3</span>
+              <select class="queue-config-select" id="mlfqL3Algo" onchange="onMlfqAlgoChange(3)">
+                <option value="FCFS" selected>FCFS</option><option value="RR">Round Robin</option>
+                <option value="SJF">SJF</option><option value="Priority">Priority</option>
+              </select>
+              <div id="mlfqL3QWrap" class="quantum-input-wrap" style="display:none;">
+                <span>q=</span><input type="number" id="mlfqL3Q" value="8" min="1" max="20" onkeydown="blockNeg(event)" oninput="clampMin(this,1)">
+              </div>
+            </div>
+          </div>
+          <div style="font-size:.58rem;color:var(--fg-muted);margin-top:4px;">Todos los procesos inician en L1. Se degradan al agotar su quantum.</div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn-secondary btn-xs" onclick="selectAll()">Seleccionar todos</button>
+          <button class="btn-secondary btn-xs" onclick="clearSelection()">Limpiar selección</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RESULTS SECTION -->
+    <div id="resultsSection">
+
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⚖️</div>
+        <div class="empty-text">Carga procesos, selecciona algoritmos y presiona <strong>Comparar</strong></div>
+      </div>
+
+      <!-- Winner -->
+      <div id="winnerBanner" style="display:none;" class="winner-banner">
+        <div>
+          <div class="winner-label">🏆 Mejor algoritmo global</div>
+          <div style="font-size:.62rem;color:var(--fg-muted);margin-top:2px;">Menor tiempo de espera promedio</div>
+        </div>
+        <div class="winner-algo-chips" id="winnerChips"></div>
+      </div>
+
+      <!-- Comparison table / chart -->
+      <div id="tableWrap" style="display:none;" class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div class="panel-title" style="margin-bottom:0;">📊 Métricas comparativas</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-secondary btn-xs active-view" id="btnViewTable" onclick="setView('table')">📋 Tabla</button>
+            <button class="btn-secondary btn-xs" id="btnViewChart" onclick="setView('chart')">📈 Gráfica</button>
+          </div>
+        </div>
+
+        <!-- TABLE VIEW -->
+        <div id="tableView">
+          <div class="compare-wrap">
+            <table class="compare-table" id="compareTable">
+              <thead id="compareHead"></thead>
+              <tbody id="compareBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- CHART VIEW -->
+        <div id="chartView" style="display:none;">
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="chart-container" style="height:250px;">
+              <canvas id="chartTime"></canvas>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="chart-container" style="height:200px;">
+                <canvas id="chartCPU"></canvas>
+              </div>
+              <div class="chart-container" style="height:200px;">
+                <canvas id="chartCtx"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gantt charts -->
+      <div class="gantt-section" id="ganttSection" style="display:none;"></div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- ══ MODAL INSTRUCCIONES ══ -->
+<div class="modal-overlay" id="instrModal" onclick="if(event.target===this)closeInstrModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeInstrModal()">✕</button>
+    <div class="modal-header">
+      <div style="font-size:2rem;">📖</div>
+      <div>
+        <div style="font-size:1rem;font-weight:700;color:var(--fg);">Cómo usar la Comparación</div>
+        <div style="font-size:.72rem;color:var(--fg-muted);">Guía paso a paso del comparador de algoritmos de planificación</div>
+      </div>
+    </div>
+
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">1</div>
+        <div class="instr-icon">📥</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Cargar procesos</div>
+        <div class="instr-step-desc">
+          Tienes tres formas de cargar procesos:<br><br>
+          • <strong>Cargar desde Procesos</strong> — importa los procesos definidos en <em>index.html</em> (sincronizados vía localStorage)<br>
+          • <strong>Cargar desde Scheduling</strong> — importa la configuración guardada en <em>scheduling.html</em><br>
+          • <strong>Agregar manualmente</strong> — ingresa Arrival, Burst y Priority. En el campo PID <strong>solo se aceptan números</strong> — la <em>P</em> se agrega automáticamente (ej. escribe <em>1</em> → se crea <em>P1</em>). Letras, signos y negativos no están permitidos.<br>
+          • <strong>Aleatorio</strong> — genera un proceso con valores aleatorios para pruebas rápidas
+        </div>
+      </div>
+    </div>
+
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">2</div>
+        <div class="instr-icon">🔧</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Seleccionar algoritmos</div>
+        <div class="instr-step-desc">
+          Activa uno o más algoritmos haciendo clic en sus tarjetas. Los disponibles son:<br><br>
+          • <strong>FCFS</strong> — First Come, First Served (no preemptivo)<br>
+          • <strong>SJF</strong> — Shortest Job First (no preemptivo)<br>
+          • <strong>HRRN</strong> — Highest Response Ratio Next<br>
+          • <strong>SRTF</strong> — Shortest Remaining Time First (preemptivo)<br>
+          • <strong>Priority</strong> — Prioridad preemptiva<br>
+          • <strong>Round Robin</strong> — Quantum configurable<br>
+          • <strong>MLQ</strong> — Multi-Level Queue: 3 colas fijas (Q1 alta prioridad → Q3 baja). Cada cola tiene su propio algoritmo y quantum. Los procesos se asignan automáticamente por prioridad y no cambian de cola.<br>
+          • <strong>MLFQ</strong> — Multi-Level Feedback Queue: los procesos bajan de nivel al agotar su quantum (degradación). Configura el algoritmo y quantum de cada nivel, y el intervalo de boost para evitar inanición.<br><br>
+          Puedes comparar cualquier combinación al mismo tiempo.
+        </div>
+      </div>
+    </div>
+
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">3</div>
+        <div class="instr-icon">▶</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Ejecutar la comparación</div>
+        <div class="instr-step-desc">
+          Presiona <strong>Comparar Algoritmos</strong>. El motor ejecuta cada algoritmo seleccionado sobre el mismo conjunto de procesos y calcula en tiempo real:
+          <br><br>
+          • <strong>WT promedio</strong> — Tiempo de espera medio<br>
+          • <strong>TAT promedio</strong> — Turnaround time medio<br>
+          • <strong>RT promedio</strong> — Tiempo de respuesta medio<br>
+          • <strong>CPU Util %</strong> — Porcentaje de tiempo con CPU ocupada<br>
+          • <strong>Context Switches</strong> — Número de cambios de contexto<br>
+          • <strong>Throughput</strong> — Procesos completados por unidad de tiempo
+        </div>
+      </div>
+    </div>
+
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">4</div>
+        <div class="instr-icon">📊</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Interpretar los resultados</div>
+        <div class="instr-step-desc">
+          • La celda en <strong style="color:var(--success)">verde</strong> es el <em>mejor valor</em> por métrica<br>
+          • La celda en <strong style="color:#fca5a5">rojo</strong> es el peor<br>
+          • El banner superior muestra el <strong>algoritmo ganador global</strong> (menor WT promedio)<br>
+          • Debajo de la tabla se muestran los <strong>diagramas de Gantt</strong> de cada algoritmo para visualizar la distribución de ejecución en el tiempo
+        </div>
+      </div>
+    </div>
+
+    <div class="instr-step">
+      <div class="instr-step-left">
+        <div class="instr-num">5</div>
+        <div class="instr-icon">💡</div>
+      </div>
+      <div class="instr-step-body">
+        <div class="instr-step-title">Flujo recomendado</div>
+        <div class="instr-step-desc">
+          1. Ve a <em>Procesos</em> (index.html), crea tu carga de trabajo y pulsa <strong>📤 Sync Scheduling</strong><br>
+          2. Regresa aquí y usa <strong>Cargar desde Procesos</strong><br>
+          3. Selecciona los algoritmos que quieras evaluar<br>
+          4. Ajusta el quantum de Round Robin si lo seleccionaste<br>
+          5. Pulsa <strong>Comparar</strong> y analiza cuál algoritmo minimiza los tiempos de espera para tu carga
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// DATA & CONSTANTS
+// ══════════════════════════════════════════════
+let processes = [];
+let lastResults = {};
+let currentView = 'table';
+let chartTimeInst = null;
+let chartCPUInst  = null;
+let chartCtxInst  = null;
+
+const COLORS = [
+  '#38bdf8','#10b981','#f59e0b','#8b5cf6',
+  '#ef4444','#ec4899','#14b8a6','#f97316',
+  '#6366f1','#84cc16'
+];
+
+const ALGO_META = {
+  FCFS:       { label: 'FCFS',        icon: '🍔', desc: 'First Come, First Served', badge: 'NP' },
+  SJF:        { label: 'SJF',         icon: '✂️',  desc: 'Shortest Job First',       badge: 'NP' },
+  HRRN:       { label: 'HRRN',        icon: '⚖️',  desc: 'Highest Response Ratio',   badge: 'NP' },
+  SRTF:       { label: 'SRTF',        icon: '🏎️',  desc: 'Shortest Remaining Time',  badge: 'P'  },
+  PRIORITY_P: { label: 'Priority',    icon: '🚑',  desc: 'Priority Preemptive',      badge: 'P'  },
+  RR:         { label: 'Round Robin', icon: '🎮',  desc: 'Round Robin',              badge: 'P'  },
+  MLQ:        { label: 'MLQ',         icon: '🛫',  desc: 'Multi-Level Queue',         badge: 'ML' },
+  MLFQ:       { label: 'MLFQ',        icon: '🎓',  desc: 'Multi-Level Feedback Queue',badge: 'ML' },
+};
+
+// ══════════════════════════════════════════════
+// ALGORITHM ENGINES (ported from scheduling.html)
+// ══════════════════════════════════════════════
+function initProcs(ps) {
+  return ps.map(p => ({ ...p, rt: p.bt, started: false, ct: 0, tat: 0, wt: 0, respTime: 0 }));
+}
+
+function mergeOrPush(tl, seg) {
+  const l = tl[tl.length - 1];
+  if (l && l.pid === seg.pid && l.end === seg.start) l.end = seg.end;
+  else tl.push(seg);
+}
+
+function pushIdle(tl, s, e) {
+  const l = tl[tl.length - 1];
+  if (l && l.pid === 'IDLE') l.end = e;
+  else tl.push({ pid: 'IDLE', start: s, end: e, color: 'transparent' });
+}
+
+function runNP(ps, pickFn) {
+  let t = 0, done = 0, n = ps.length, tl = [], pl = initProcs(ps), ctx = 0, lp = null, idle = 0;
+  while (done < n) {
+    let av = pl.filter(p => p.at <= t && p.rt > 0);
+    if (!av.length) {
+      let nx = pl.filter(p => p.rt > 0).map(p => p.at).sort((a,b) => a-b)[0];
+      pushIdle(tl, t, nx); idle += nx - t; t = nx; lp = 'IDLE'; continue;
+    }
+    let sel = pickFn(av, t);
+    if (lp && lp !== sel.pid && lp !== 'IDLE') ctx++;
+    if (!sel.started) { sel.respTime = t - sel.at; sel.started = true; }
+    let st = t; t += sel.rt; sel.rt = 0;
+    sel.ct = t; sel.tat = t - sel.at; sel.wt = sel.tat - sel.bt; done++;
+    tl.push({ pid: sel.pid, start: st, end: t, color: sel.color });
+    lp = sel.pid;
+  }
+  return { timeline: tl, stats: pl, totalT: t, ctxSwitches: ctx, totalIdle: idle };
+}
+
+function runPre(ps, pickFn) {
+  let t = 0, done = 0, n = ps.length, tl = [], pl = initProcs(ps), ctx = 0, lp = null, idle = 0;
+  while (done < n) {
+    let av = pl.filter(p => p.at <= t && p.rt > 0);
+    if (!av.length) {
+      let nx = pl.filter(p => p.rt > 0).map(p => p.at).sort((a,b) => a-b)[0];
+      pushIdle(tl, t, nx); idle += nx - t; t = nx; lp = 'IDLE'; continue;
+    }
+    let sel = pickFn(av, t);
+    if (lp !== sel.pid) { if (lp && lp !== 'IDLE') ctx++; lp = sel.pid; }
+    if (!sel.started) { sel.respTime = t - sel.at; sel.started = true; }
+    let nx = pl.filter(p => p.at > t && p.rt > 0).map(p => p.at).sort((a,b) => a-b)[0];
+    let ru = nx !== undefined ? Math.min(nx, t + sel.rt) : t + sel.rt;
+    let st = t; sel.rt -= ru - t; t = ru;
+    mergeOrPush(tl, { pid: sel.pid, start: st, end: t, color: sel.color });
+    if (sel.rt === 0) { sel.ct = t; sel.tat = t - sel.at; sel.wt = sel.tat - sel.bt; done++; }
+  }
+  return { timeline: tl, stats: pl, totalT: t, ctxSwitches: ctx, totalIdle: idle };
+}
+
+function runRR(ps, quantum) {
+  let t = 0, completed = 0, n = ps.length;
+  let timeline = [];
+  let pList = ps.map(p => ({ ...p, rt: p.bt, started: false, ct: 0, tat: 0, wt: 0, respTime: 0 }))
+                 .sort((a,b) => a.at - b.at);
+  let queue = [], i = 0, lastPid = null, ctxSwitches = 0, totalIdle = 0;
+  while (completed < n) {
+    while (i < n && pList[i].at <= t) { queue.push(pList[i]); i++; }
+    if (queue.length === 0) {
+      let nextArrival = pList[i].at;
+      timeline.push({ pid: 'IDLE', start: t, end: nextArrival, color: 'transparent' });
+      totalIdle += nextArrival - t; t = nextArrival;
+      while (i < n && pList[i].at <= t) { queue.push(pList[i]); i++; }
+      continue;
+    }
+    let current = queue.shift();
+    if (lastPid !== null && lastPid !== current.pid) ctxSwitches++;
+    if (!current.started) { current.started = true; current.respTime = t - current.at; }
+    let execTime = Math.min(quantum, current.rt);
+    let start = t; t += execTime; current.rt -= execTime;
+    timeline.push({ pid: current.pid, start, end: t, color: current.color });
+    while (i < n && pList[i].at <= t) { queue.push(pList[i]); i++; }
+    if (current.rt > 0) { queue.push(current); }
+    else { current.ct = t; current.tat = t - current.at; current.wt = current.tat - current.bt; completed++; }
+    lastPid = current.pid;
+  }
+  return { timeline, stats: pList, totalT: t, ctxSwitches, totalIdle };
+}
+
+// ── MLQ ENGINE ──────────────────────────────
+function runMLQ(ps, mlqCfg) {
+  let t = 0, done = 0, n = ps.length, tl = [], pl = initProcs(ps),
+      ctx = 0, lp = null, idle = 0;
+  const rrQ = {1:[],2:[],3:[]}, rrSeen = {1:new Set(),2:new Set(),3:new Set()};
+
+  function pickLane(avail, ln) {
+    const a = mlqCfg[ln].algo;
+    if (a === 'SJF')      return avail.sort((x,y) => x.rt - y.rt || x.at - y.at)[0];
+    if (a === 'Priority') return avail.sort((x,y) => y.prio - x.prio || x.at - y.at)[0];
+    return avail.sort((x,y) => x.at - y.at)[0]; // FCFS
+  }
+
+  while (done < n) {
+    [1,2,3].forEach(ln => {
+      if (mlqCfg[ln].algo === 'RR') {
+        pl.filter(p => p.at <= t && p.rt > 0 && p.queue === ln && !rrSeen[ln].has(p.pid))
+          .sort((a,b) => a.at - b.at)
+          .forEach(p => { rrQ[ln].push(p); rrSeen[ln].add(p.pid); });
+      }
+    });
+    const avail = [1,2,3].map(ln => pl.filter(p => p.at <= t && p.rt > 0 && p.queue === ln));
+    let sel = null, run = 0, fromLane = 0;
+    for (const [i, ln] of [[0,1],[1,2],[2,3]]) {
+      if (!avail[i].length) continue;
+      if (mlqCfg[ln].algo === 'RR') {
+        if (rrQ[ln].length) { sel = rrQ[ln].shift(); run = Math.min(sel.rt, mlqCfg[ln].quantum || 2); fromLane = ln; break; }
+      } else { sel = pickLane(avail[i], ln); run = sel.rt; fromLane = ln; break; }
+    }
+    if (!sel) {
+      const nx = pl.filter(p => p.rt > 0).map(p => p.at).sort((a,b) => a-b)[0];
+      pushIdle(tl, t, nx); idle += nx - t; t = nx; lp = 'IDLE'; continue;
+    }
+    if (lp !== sel.pid) { if (lp && lp !== 'IDLE') ctx++; lp = sel.pid; }
+    if (!sel.started) { sel.respTime = t - sel.at; sel.started = true; }
+    const st = t; t += run; sel.rt -= run;
+    tl.push({ pid: sel.pid, start: st, end: t, color: sel.color, lane: fromLane });
+    if (mlqCfg[fromLane].algo === 'RR') {
+      [1,2,3].forEach(ln => {
+        if (mlqCfg[ln].algo === 'RR') {
+          pl.filter(p => p.at <= t && p.rt > 0 && p.queue === ln && !rrSeen[ln].has(p.pid) && p !== sel)
+            .sort((a,b) => a.at - b.at)
+            .forEach(p => { rrQ[ln].push(p); rrSeen[ln].add(p.pid); });
+        }
+      });
+      if (sel.rt > 0) rrQ[fromLane].push(sel);
+    }
+    if (sel.rt === 0) { sel.ct = t; sel.tat = t - sel.at; sel.wt = sel.tat - sel.bt; done++; }
+  }
+  return { timeline: tl, stats: pl, totalT: t, ctxSwitches: ctx, totalIdle: idle };
+}
+
+// ── MLFQ ENGINE ─────────────────────────────
+function runMLFQ(ps, mlfqCfg, boostEvery) {
+  const qKeys = Object.keys(mlfqCfg).map(Number).sort((a,b) => a-b);
+  const numLevels = qKeys.length;
+  const quantums = qKeys.map(k => mlfqCfg[k].algo === 'RR' ? (mlfqCfg[k].quantum || 2) : Infinity);
+  let t = 0, done = 0, n = ps.length, tl = [], pl = initProcs(ps),
+      ctx = 0, lp = null, idle = 0;
+  let qs = Array.from({length: numLevels}, () => []);
+  let inQ = new Set();
+
+  function pickLevel(lvIdx) {
+    const a = mlfqCfg[qKeys[lvIdx]]?.algo ?? 'FCFS';
+    const q = qs[lvIdx]; if (!q.length) return null;
+    if (a === 'SJF')      { q.sort((x,y) => x.rt - y.rt || x.at - y.at); return q.shift(); }
+    if (a === 'Priority') { q.sort((x,y) => y.prio - x.prio || x.at - y.at); return q.shift(); }
+    return q.shift(); // FCFS / RR
+  }
+
+  function enqNew(upto, ex) {
+    pl.filter(p => p.at <= upto && p.rt > 0 && !inQ.has(p.pid) && p !== ex)
+      .sort((a,b) => a.at - b.at)
+      .forEach(p => { qs[0].push(p); inQ.add(p.pid); });
+  }
+
+  enqNew(0, null);
+  while (done < n) {
+    if (boostEvery > 0 && t > 0 && t % boostEvery === 0) {
+      for (let i = 1; i < numLevels; i++) {
+        if (qs[i].length) { qs[i].forEach(p => qs[0].push(p)); qs[i] = []; }
+      }
+    }
+    let sel = null, lvIdx = -1;
+    for (let i = 0; i < numLevels; i++) {
+      if (qs[i].length) { sel = pickLevel(i); lvIdx = i; break; }
+    }
+    if (!sel) {
+      t++; idle++;
+      const idl = tl[tl.length-1];
+      if (idl && idl.pid === 'IDLE') idl.end = t;
+      else tl.push({pid:'IDLE',start:t-1,end:t,color:'transparent'});
+      lp = 'IDLE'; enqNew(t, null); continue;
+    }
+    if (lp !== sel.pid) { if (lp && lp !== 'IDLE') ctx++; lp = sel.pid; }
+    if (!sel.started) { sel.respTime = t - sel.at; sel.started = true; }
+    const quantum = quantums[lvIdx];
+    const run = Math.min(sel.rt, quantum);
+    const st = t; t += run; sel.rt -= run;
+    tl.push({pid: sel.pid, start: st, end: t, color: sel.color, level: qKeys[lvIdx]});
+    enqNew(t, sel);
+    if (sel.rt > 0) {
+      qs[Math.min(lvIdx + 1, numLevels - 1)].push(sel);
+    } else {
+      sel.ct = t; sel.tat = t - sel.at; sel.wt = sel.tat - sel.bt; done++;
+    }
+  }
+  return { timeline: tl, stats: pl, totalT: t, ctxSwitches: ctx, totalIdle: idle };
+}
+
+// ── ENGINE DISPATCHER ────────────────────────
+function runEngine(ps, algo, q, mlqCfg, mlfqCfg, mlfqBoost) {
+  const ps2 = ps.map((p, idx) => ({
+    pid: p.pid, at: p.at ?? p.arrival ?? 0, bt: p.bt ?? p.burst ?? p.originalBurst ?? 1,
+    prio: p.prio ?? p.priority ?? 1,
+    queue: p.queue || 1,
+    color: p.color || COLORS[idx % COLORS.length]
+  }));
+  switch (algo) {
+    case 'FCFS':       return runNP(ps2, av => av.sort((a,b) => a.at - b.at)[0]);
+    case 'SJF':        return runNP(ps2, av => av.sort((a,b) => a.bt - b.bt || a.at - b.at)[0]);
+    case 'HRRN':       return runNP(ps2, (av, t) => av.reduce((best, p) => {
+                          let rr = (t - p.at + p.bt)/p.bt, br = (t - best.at + best.bt)/best.bt;
+                          return rr > br ? p : rr < br ? best : p.at < best.at ? p : best;
+                        }));
+    case 'SRTF':       return runPre(ps2, av => av.sort((a,b) => a.rt - b.rt || a.at - b.at)[0]);
+    case 'PRIORITY_P': return runPre(ps2, av => av.sort((a,b) => b.prio - a.prio || a.at - b.at)[0]);
+    case 'RR':         return runRR(ps2, q || 2);
+    case 'MLQ':        return runMLQ(ps2, mlqCfg);
+    case 'MLFQ':       return runMLFQ(ps2, mlfqCfg, mlfqBoost || 0);
+    default:           return runNP(ps2, av => av.sort((a,b) => a.at - b.at)[0]);
+  }
+}
+
+function computeMetrics(result) {
+  const { stats, totalT, ctxSwitches, totalIdle } = result;
+  const n = stats.length;
+  const avgWT  = stats.reduce((s,p) => s + p.wt, 0) / n;
+  const avgTAT = stats.reduce((s,p) => s + p.tat, 0) / n;
+  const avgRT  = stats.reduce((s,p) => s + p.respTime, 0) / n;
+  const cpuUtil = totalT > 0 ? ((totalT - totalIdle) / totalT) * 100 : 100;
+  const throughput = totalT > 0 ? n / totalT : 0;
+  return { avgWT, avgTAT, avgRT, cpuUtil, ctxSwitches, throughput, totalT };
+}
+
+// ══════════════════════════════════════════════
+// PROCESS MANAGEMENT
+// ══════════════════════════════════════════════
+function loadFromLS() {
+  try {
+    const raw = localStorage.getItem('os_shared_processes');
+    if (!raw) { toast('No hay procesos en localStorage (index.html)', 'warn'); return; }
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) { toast('Lista de procesos vacía', 'warn'); return; }
+    processes = arr.map((p, i) => ({
+      pid: p.pid, at: p.at ?? 0, bt: p.bt ?? 1, prio: p.prio ?? 1,
+      color: COLORS[i % COLORS.length]
+    }));
+    autoAssignQueues();
+    renderProcPills(); updateCompareBtn();
+    toast(processes.length + ' proceso(s) cargados desde Procesos ✓', 'success');
+  } catch(e) { toast('Error leyendo localStorage', 'error'); }
+}
+
+function loadFromScheduling() {
+  try {
+    const raw = localStorage.getItem('rr_processes');
+    if (!raw) { toast('No hay procesos en Scheduling', 'warn'); return; }
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) { toast('Lista vacía en Scheduling', 'warn'); return; }
+    processes = arr.map((p, i) => ({
+      pid: p.pid, at: p.at ?? 0, bt: p.bt ?? 1, prio: p.prio ?? 1,
+      queue: p.queue || null,
+      color: COLORS[i % COLORS.length]
+    }));
+    autoAssignQueues();
+    renderProcPills(); updateCompareBtn();
+    toast(processes.length + ' proceso(s) cargados desde Scheduling ✓', 'success');
+  } catch(e) { toast('Error leyendo localStorage de Scheduling', 'error'); }
+}
+
+function clearProcs() {
+  processes = [];
+  renderProcPills();
+  updateCompareBtn();
+  toast('Procesos eliminados', 'info');
+}
+
+function blockNeg(e) {
+  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+}
+function clampMin(el, min) {
+  if (el.value !== '' && +el.value < min) el.value = min;
+}
+function filterPID(el) {
+  const digits = el.value.replace(/\D/g, '');
+  el.value = digits ? 'P' + digits : '';
+}
+
+let nextAutoNum = 1;
+function addManualProc() {
+  const pidRaw = document.getElementById('mPid').value.trim();
+  const pid    = pidRaw || ('P' + nextAutoNum);
+  if (pidRaw && !/^P\d+$/.test(pidRaw)) { toast('PID inválido — usa formato P seguido de número (ej. P1)', 'error'); return; }
+  const at   = parseInt(document.getElementById('mArrival').value)  || 0;
+  const bt   = Math.max(1, parseInt(document.getElementById('mBurst').value)   || 1);
+  const prio = Math.max(1, parseInt(document.getElementById('mPriority').value) || 1);
+  if (processes.some(p => p.pid === pid)) { toast('PID ya existe', 'error'); return; }
+  const queue = prio <= 3 ? 1 : prio <= 6 ? 2 : 3;
+  processes.push({ pid, at, bt, prio, queue, color: COLORS[processes.length % COLORS.length] });
+  nextAutoNum++;
+  const m = pid.match(/^([A-Za-z]*)(\d+)$/);
+  if (m) document.getElementById('mPid').value = m[1] + (parseInt(m[2]) + 1);
+  renderProcPills(); updateCompareBtn();
+  toast('Proceso ' + pid + ' agregado', 'success');
+}
+
+function addRandomProc() {
+  let pid;
+  do { pid = 'P' + (Math.floor(Math.random() * 900) + 100); }
+  while (processes.some(p => p.pid === pid));
+  const prio = Math.floor(Math.random() * 5) + 1;
+  processes.push({
+    pid, at: Math.floor(Math.random() * 8),
+    bt: Math.floor(Math.random() * 9) + 1,
+    prio, queue: prio <= 3 ? 1 : prio <= 6 ? 2 : 3,
+    color: COLORS[processes.length % COLORS.length]
+  });
+  renderProcPills(); updateCompareBtn();
+  toast('Proceso aleatorio agregado', 'success');
+}
+
+function removeProc(idx) {
+  processes.splice(idx, 1);
+  renderProcPills();
+  updateCompareBtn();
+}
+
+function autoAssignQueues() {
+  processes.forEach(p => {
+    if (!p.queue) p.queue = p.prio <= 3 ? 1 : p.prio <= 6 ? 2 : 3;
+  });
+}
+
+const QUEUE_COLORS = { 1: '#f59e0b', 2: '#60a5fa', 3: '#9ca3af' };
+
+function renderProcPills() {
+  const el  = document.getElementById('procPills');
+  const cnt = document.getElementById('importCount');
+  cnt.textContent = processes.length ? processes.length + ' proceso(s) cargados' : 'Sin procesos cargados';
+  if (!processes.length) { el.innerHTML = ''; return; }
+  const showQueue = SELECTED_ALGOS.has('MLQ');
+  el.innerHTML = processes.map((p, i) => {
+    const qc = QUEUE_COLORS[p.queue] || '#9ca3af';
+    const qSel = showQueue ? `
+      <select class="pill-queue" style="color:${qc};border-color:${qc}40;"
+        onchange="processes[${i}].queue=+this.value;renderProcPills()">
+        <option value="1" ${p.queue===1?'selected':''}>Q1</option>
+        <option value="2" ${p.queue===2?'selected':''}>Q2</option>
+        <option value="3" ${p.queue===3?'selected':''}>Q3</option>
+      </select>` : '';
+    return `
+      <div class="proc-pill" style="border-left:3px solid ${p.color}">
+        <span class="proc-pill-pid" style="color:${p.color}">${p.pid}</span>
+        <span class="proc-pill-meta">AT:${p.at} BT:${p.bt} P:${p.prio}</span>
+        ${qSel}
+        <span onclick="removeProc(${i})" style="cursor:pointer;color:var(--fg-muted);font-size:.9rem;">&times;</span>
+      </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// ALGO SELECTION UI
+// ══════════════════════════════════════════════
+const SELECTED_ALGOS = new Set(['FCFS','SJF','RR']);
+
+function buildAlgoChecks() {
+  const el = document.getElementById('algoChecks');
+  el.innerHTML = Object.entries(ALGO_META).map(([key, m]) => `
+    <div class="algo-check-label ${SELECTED_ALGOS.has(key) ? 'checked' : ''}" id="lbl_${key}" onclick="toggleAlgo('${key}')">
+      <span class="algo-check-dot"></span>
+      <span>${m.icon} ${m.label}</span>
+      <span style="font-size:.55rem;color:var(--fg-muted);margin-left:4px;">${m.badge}</span>
+    </div>
+  `).join('');
+  updateQuantumVisibility();
+}
+
+function toggleAlgo(key) {
+  if (SELECTED_ALGOS.has(key)) SELECTED_ALGOS.delete(key);
+  else SELECTED_ALGOS.add(key);
+  const lbl = document.getElementById('lbl_' + key);
+  lbl.classList.toggle('checked', SELECTED_ALGOS.has(key));
+  updateQuantumVisibility();
+  updateCompareBtn();
+  if (key === 'MLQ') renderProcPills(); // show/hide queue selectors
+}
+
+// ── Config readers ───────────────────────────
+function getMlqCfg() {
+  return {
+    1: { algo: document.getElementById('mlqQ1Algo').value, quantum: +document.getElementById('mlqQ1Q').value || 2 },
+    2: { algo: document.getElementById('mlqQ2Algo').value, quantum: +document.getElementById('mlqQ2Q').value || 2 },
+    3: { algo: document.getElementById('mlqQ3Algo').value, quantum: +document.getElementById('mlqQ3Q').value || 2 },
+  };
+}
+function getMlfqCfg() {
+  return {
+    1: { algo: document.getElementById('mlfqL1Algo').value, quantum: +document.getElementById('mlfqL1Q').value || 2 },
+    2: { algo: document.getElementById('mlfqL2Algo').value, quantum: +document.getElementById('mlfqL2Q').value || 4 },
+    3: { algo: document.getElementById('mlfqL3Algo').value, quantum: +document.getElementById('mlfqL3Q').value || 8 },
+  };
+}
+
+
+function onMlqAlgoChange(q) {
+  const v = document.getElementById(`mlqQ${q}Algo`).value;
+  document.getElementById(`mlqQ${q}QWrap`).style.display = v === 'RR' ? 'flex' : 'none';
+}
+function onMlfqAlgoChange(l) {
+  const v = document.getElementById(`mlfqL${l}Algo`).value;
+  document.getElementById(`mlfqL${l}QWrap`).style.display = v === 'RR' ? 'flex' : 'none';
+}
+
+function updateQuantumVisibility() {
+  document.getElementById('quantumRow').style.display      = SELECTED_ALGOS.has('RR')   ? 'flex'  : 'none';
+  document.getElementById('mlqConfigPanel').classList.toggle('show',  SELECTED_ALGOS.has('MLQ'));
+  document.getElementById('mlfqConfigPanel').classList.toggle('show', SELECTED_ALGOS.has('MLFQ'));
+}
+
+function selectAll() {
+  Object.keys(ALGO_META).forEach(k => {
+    SELECTED_ALGOS.add(k);
+    document.getElementById('lbl_' + k)?.classList.add('checked');
+  });
+  updateQuantumVisibility();
+  updateCompareBtn();
+}
+
+function clearSelection() {
+  SELECTED_ALGOS.clear();
+  Object.keys(ALGO_META).forEach(k => {
+    document.getElementById('lbl_' + k)?.classList.remove('checked');
+  });
+  updateQuantumVisibility();
+  updateCompareBtn();
+}
+
+function updateCompareBtn() {
+  const btn = document.getElementById('btnCompare');
+  btn.disabled = processes.length === 0 || SELECTED_ALGOS.size === 0;
+}
+
+// ══════════════════════════════════════════════
+// RUN COMPARISON
+// ══════════════════════════════════════════════
+function runComparison() {
+  if (!processes.length || !SELECTED_ALGOS.size) return;
+  const q        = parseInt(document.getElementById('rrQuantum').value) || 2;
+  const mlqCfg   = getMlqCfg();
+  const mlfqCfg  = getMlfqCfg();
+  const algos    = Array.from(SELECTED_ALGOS);
+
+  lastResults = {};
+  algos.forEach(algo => {
+    try {
+      const result = runEngine(processes, algo, q, mlqCfg, mlfqCfg, 0);
+      lastResults[algo] = { result, metrics: computeMetrics(result) };
+    } catch(e) { console.error(algo, e); toast('Error en ' + algo + ': ' + e.message, 'error'); }
+  });
+
+  renderWinner();
+  renderCompareTable();
+  renderGantts();
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('winnerBanner').style.display = 'flex';
+  document.getElementById('tableWrap').style.display = 'block';
+  document.getElementById('ganttSection').style.display = 'flex';
+  if (currentView === 'chart') renderCharts();
+  toast('Comparación completada ✓', 'success');
+}
+
+// ══════════════════════════════════════════════
+// WINNER
+// ══════════════════════════════════════════════
+function renderWinner() {
+  const entries = Object.entries(lastResults);
+  if (!entries.length) return;
+  const minWT = Math.min(...entries.map(([,r]) => r.metrics.avgWT));
+  const winners = entries.filter(([,r]) => Math.abs(r.metrics.avgWT - minWT) < 0.001);
+  const chips = document.getElementById('winnerChips');
+  chips.innerHTML = winners.map(([algo]) => {
+    const m = ALGO_META[algo];
+    const c = algo === 'RR' ? '#60a5fa' : algo === 'SRTF' ? '#f59e0b' : '#10b981';
+    return `<div class="winner-chip" style="color:${c};border-color:${c}40;background:${c}15;">
+      ${m.icon} ${m.label}
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// COMPARISON TABLE
+// ══════════════════════════════════════════════
+function renderCompareTable() {
+  const algos = Object.keys(lastResults);
+  const head = document.getElementById('compareHead');
+  const body = document.getElementById('compareBody');
+
+  head.innerHTML = `<tr>
+    <th>Métrica</th>
+    ${algos.map(a => `<th>${ALGO_META[a].icon} ${ALGO_META[a].label}</th>`).join('')}
+    <th>Mejor</th>
+  </tr>`;
+
+  const METRICS = [
+    { key: 'avgWT',       label: 'Avg Waiting Time',   unit: ' ms', lower: true,  fmt: v => v.toFixed(2) },
+    { key: 'avgTAT',      label: 'Avg Turnaround',      unit: ' ms', lower: true,  fmt: v => v.toFixed(2) },
+    { key: 'avgRT',       label: 'Avg Response Time',   unit: ' ms', lower: true,  fmt: v => v.toFixed(2) },
+    { key: 'cpuUtil',     label: 'CPU Utilization',     unit: '%',   lower: false, fmt: v => v.toFixed(1) },
+    { key: 'ctxSwitches', label: 'Context Switches',    unit: '',    lower: true,  fmt: v => v.toFixed(0) },
+    { key: 'throughput',  label: 'Throughput',          unit: '/u',  lower: false, fmt: v => v.toFixed(3) },
+    { key: 'totalT',      label: 'Makespan',            unit: ' ms', lower: true,  fmt: v => v.toFixed(0) },
+  ];
+
+  body.innerHTML = METRICS.map(m => {
+    const vals = algos.map(a => lastResults[a].metrics[m.key]);
+    const best  = m.lower ? Math.min(...vals) : Math.max(...vals);
+    const worst = m.lower ? Math.max(...vals) : Math.min(...vals);
+    const bestAlgos = algos.filter((_,i) => Math.abs(vals[i] - best) < 0.001);
+
+    return `<tr>
+      <td>
+        <div style="font-weight:700;font-size:.75rem;">${m.label}</div>
+        <div style="font-size:.6rem;color:var(--fg-muted);">${m.lower ? '↓ menor = mejor' : '↑ mayor = mejor'}</div>
+      </td>
+      ${algos.map((a, i) => {
+        const v = vals[i];
+        const isBest  = Math.abs(v - best) < 0.001;
+        const isWorst = Math.abs(v - worst) < 0.001 && vals.length > 1 && best !== worst;
+        return `<td class="${isBest ? 'cell-best' : isWorst ? 'cell-worst' : ''}">
+          ${m.fmt(v)}${m.unit}
+          ${isBest ? ' 🏆' : ''}
+        </td>`;
+      }).join('')}
+      <td style="color:var(--success);font-weight:700;font-size:.7rem;">
+        ${bestAlgos.map(a => ALGO_META[a].label).join(', ')}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// GANTT CHARTS
+// ══════════════════════════════════════════════
+const SEG_W = 28;
+
+const LANE_COLORS  = { 1: '#f59e0b', 2: '#60a5fa', 3: '#9ca3af' };
+const LEVEL_COLORS = { 1: '#38bdf8', 2: '#8b5cf6', 3: '#9ca3af' };
+
+function renderGantts() {
+  const section = document.getElementById('ganttSection');
+  section.innerHTML = '';
+
+  Object.entries(lastResults).forEach(([algo, { result, metrics }]) => {
+    const m = ALGO_META[algo];
+    const { timeline, totalT } = result;
+    const isMLQ  = algo === 'MLQ';
+    const isMLFQ = algo === 'MLFQ';
+
+    const card = document.createElement('div');
+    card.className = 'gantt-card';
+
+    // Legend for MLQ / MLFQ
+    let legendHtml = '';
+    if (isMLQ) {
+      legendHtml = `<div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        ${[1,2,3].map(q => `<span style="font-size:.6rem;display:flex;align-items:center;gap:4px;">
+          <span class="gantt-level-dot" style="background:${LANE_COLORS[q]}"></span>
+          Q${q}</span>`).join('')}
+      </div>`;
+    } else if (isMLFQ) {
+      legendHtml = `<div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        ${[1,2,3].map(l => `<span style="font-size:.6rem;display:flex;align-items:center;gap:4px;">
+          <span class="gantt-level-dot" style="background:${LEVEL_COLORS[l]}"></span>
+          L${l}</span>`).join('')}
+      </div>`;
+    }
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'gantt-algo-header';
+    hdr.innerHTML = `
+      <span style="font-size:1.2rem;">${m.icon}</span>
+      <span class="gantt-algo-name">${m.label}</span>
+      <span class="gantt-badge">${m.badge}</span>
+      <div class="mini-stats">
+        <span>WT: <span class="mini-stat">${metrics.avgWT.toFixed(2)}</span></span>
+        <span style="opacity:.4;">|</span>
+        <span>TAT: <span class="mini-stat">${metrics.avgTAT.toFixed(2)}</span></span>
+        <span style="opacity:.4;">|</span>
+        <span>CPU: <span class="mini-stat">${metrics.cpuUtil.toFixed(1)}%</span></span>
+        <span style="opacity:.4;">|</span>
+        <span>CTX: <span class="mini-stat">${metrics.ctxSwitches}</span></span>
+      </div>
+    `;
+    card.appendChild(hdr);
+    if (legendHtml) { const ld = document.createElement('div'); ld.innerHTML = legendHtml; card.appendChild(ld); }
+
+    // Track
+    const scroll = document.createElement('div');
+    scroll.className = 'gantt-scroll';
+    const track = document.createElement('div');
+    track.className = 'gantt-track';
+    const ticks = document.createElement('div');
+    ticks.className = 'gantt-tick-row';
+
+    const pidColorMap = {};
+    processes.forEach((p,i) => { pidColorMap[p.pid] = p.color || COLORS[i % COLORS.length]; });
+
+    timeline.forEach(seg => {
+      const dur    = seg.end - seg.start;
+      const w      = Math.max(SEG_W, dur * SEG_W);
+      const isIdle = seg.pid === 'IDLE';
+
+      // Color: lane color for MLQ, level color for MLFQ, process color otherwise
+      let color;
+      if (isIdle) color = 'rgba(55,65,81,.5)';
+      else if (isMLQ  && seg.lane)  color = LANE_COLORS[seg.lane]  || pidColorMap[seg.pid] || '#38bdf8';
+      else if (isMLFQ && seg.level) color = LEVEL_COLORS[seg.level] || pidColorMap[seg.pid] || '#38bdf8';
+      else color = pidColorMap[seg.pid] || seg.color || '#38bdf8';
+
+      const div = document.createElement('div');
+      div.className = 'gantt-seg' + (isIdle ? ' idle' : '');
+      div.style.cssText = `width:${w}px;
+        background:${isIdle ? 'rgba(55,65,81,.25)' : color + '28'};
+        border-left:2px solid ${isIdle ? '#374151' : color};
+        color:${isIdle ? 'var(--fg-muted)' : color};`;
+      const laneLabel = isMLQ && seg.lane ? ` Q${seg.lane}` : isMLFQ && seg.level ? ` L${seg.level}` : '';
+      div.title = `${seg.pid}${laneLabel} [${seg.start}–${seg.end}]`;
+      div.innerHTML = `<span style="pointer-events:none;font-size:.55rem;">${dur <= 1 ? '' : seg.pid}</span>`;
+      track.appendChild(div);
+
+      const tick = document.createElement('div');
+      tick.className = 'gantt-tick';
+      tick.style.minWidth = w + 'px';
+      tick.textContent = seg.start;
+      ticks.appendChild(tick);
+    });
+
+    const lastTick = document.createElement('div');
+    lastTick.className = 'gantt-tick';
+    lastTick.textContent = totalT;
+    ticks.appendChild(lastTick);
+
+    scroll.appendChild(track);
+    scroll.appendChild(ticks);
+    card.appendChild(scroll);
+    section.appendChild(card);
+  });
+}
+
+// ══════════════════════════════════════════════
+// VIEW TOGGLE & CHARTS
+// ══════════════════════════════════════════════
+function setView(view) {
+  currentView = view;
+  document.getElementById('tableView').style.display  = view === 'table' ? '' : 'none';
+  document.getElementById('chartView').style.display  = view === 'chart' ? 'block' : 'none';
+  document.getElementById('btnViewTable').classList.toggle('active-view', view === 'table');
+  document.getElementById('btnViewChart').classList.toggle('active-view', view === 'chart');
+  if (view === 'chart' && Object.keys(lastResults).length) renderCharts();
+}
+
+function getChartBase(title, hideLegend) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      title: {
+        display: !!title, text: title || '',
+        color: '#e2e8f0', font: { size: 11, weight: '700' },
+        padding: { bottom: 6 }
+      },
+      legend: {
+        display: !hideLegend,
+        labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 12, padding: 10 }
+      },
+      tooltip: {
+        backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+        titleColor: '#e2e8f0', bodyColor: '#9ca3af'
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9ca3af', font: { size: 10 } },
+        grid: { color: 'rgba(55,65,81,.35)' }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#9ca3af', font: { size: 10 } },
+        grid: { color: 'rgba(55,65,81,.35)' }
+      }
+    }
+  };
+}
+
+function renderCharts() {
+  const algos  = Object.keys(lastResults);
+  const labels = algos.map(a => ALGO_META[a].label);
+
+  if (chartTimeInst) { chartTimeInst.destroy(); chartTimeInst = null; }
+  if (chartCPUInst)  { chartCPUInst.destroy();  chartCPUInst  = null; }
+  if (chartCtxInst)  { chartCtxInst.destroy();  chartCtxInst  = null; }
+
+  // Chart 1 — Time metrics (WT, TAT, RT)
+  chartTimeInst = new Chart(document.getElementById('chartTime'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Avg Waiting Time',
+          data: algos.map(a => +lastResults[a].metrics.avgWT.toFixed(2)),
+          backgroundColor: 'rgba(56,189,248,.65)',
+          borderColor: '#38bdf8', borderWidth: 1
+        },
+        {
+          label: 'Avg Turnaround',
+          data: algos.map(a => +lastResults[a].metrics.avgTAT.toFixed(2)),
+          backgroundColor: 'rgba(16,185,129,.65)',
+          borderColor: '#10b981', borderWidth: 1
+        },
+        {
+          label: 'Avg Response Time',
+          data: algos.map(a => +lastResults[a].metrics.avgRT.toFixed(2)),
+          backgroundColor: 'rgba(245,158,11,.65)',
+          borderColor: '#f59e0b', borderWidth: 1
+        }
+      ]
+    },
+    options: getChartBase('Tiempos de Espera, Turnaround y Respuesta (ms)', false)
+  });
+
+  // Chart 2 — CPU Utilization
+  chartCPUInst = new Chart(document.getElementById('chartCPU'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'CPU Utilization (%)',
+        data: algos.map(a => +lastResults[a].metrics.cpuUtil.toFixed(1)),
+        backgroundColor: algos.map((_, i) => COLORS[i % COLORS.length] + 'a0'),
+        borderColor:     algos.map((_, i) => COLORS[i % COLORS.length]),
+        borderWidth: 1
+      }]
+    },
+    options: Object.assign(getChartBase('CPU Utilization (%)', true), {
+      scales: {
+        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: 'rgba(55,65,81,.35)' } },
+        y: { beginAtZero: true, max: 100, ticks: { color: '#9ca3af', font: { size: 10 }, callback: v => v + '%' }, grid: { color: 'rgba(55,65,81,.35)' } }
+      }
+    })
+  });
+
+  // Chart 3 — Context Switches
+  chartCtxInst = new Chart(document.getElementById('chartCtx'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Context Switches',
+        data: algos.map(a => lastResults[a].metrics.ctxSwitches),
+        backgroundColor: algos.map((_, i) => COLORS[i % COLORS.length] + 'a0'),
+        borderColor:     algos.map((_, i) => COLORS[i % COLORS.length]),
+        borderWidth: 1
+      }]
+    },
+    options: getChartBase('Context Switches', true)
+  });
+}
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toastCont');
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+
+// ══════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════
+function openInstrModal()  { document.getElementById('instrModal').classList.add('open'); }
+function closeInstrModal() { document.getElementById('instrModal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInstrModal(); });
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  buildAlgoChecks();
+
+  // Auto-load if shared processes exist
+  const shared = localStorage.getItem('os_shared_processes');
+  if (shared) {
+    try {
+      const arr = JSON.parse(shared);
+      if (Array.isArray(arr) && arr.length) {
+        processes = arr.map((p, i) => ({
+          pid: p.pid, at: p.at ?? 0, bt: p.bt ?? 1, prio: p.prio ?? 1,
+          color: COLORS[i % COLORS.length]
+        }));
+        autoAssignQueues();
+        renderProcPills();
+        updateCompareBtn();
+        toast(processes.length + ' proceso(s) importados automáticamente ✓', 'info');
+      }
+    } catch(_) {}
+  }
+});
+</script>
+</body>
+</html>
