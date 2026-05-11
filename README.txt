@@ -96,7 +96,8 @@ Pasos:
 ├── paginacion.html
 ├── replacement.html
 ├── threads.html
-└──  multicore.html
+├── multicore.html
+└── comparacion.html
 
 ----------------------------------------
 4. RECOMENDACIONES
