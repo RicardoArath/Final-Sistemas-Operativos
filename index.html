@@ -816,6 +816,10 @@ h2 {
     <a class="menu-item" href="multicore.html">
       <span class="menu-text">Multi-Core</span>
     </a>
+    <a class="menu-item" href="comparacion.html">
+      <span class="menu-text">Comparacion</span>
+    </a>
+
     <div class="sidebar-divider"></div>
     <div class="sidebar-section-label">Estados</div>
     <div style="padding:0 6px;display:flex;flex-direction:column;gap:5px;">
@@ -862,28 +866,29 @@ h2 {
 
         <div class="form-grid">
           <div class="input-group">
-            <label title="Identificador único del proceso. Ej: P1, Chrome, 101">PID <span style="color:var(--danger)">*</span></label>
-            <input type="text" id="pid" placeholder="P5" maxlength="8" oninput="vf(this,'pid')">
+            <label title="Solo ingresa el número — la P se agrega automáticamente. Ej: escribe 1 → P1">PID <span style="color:var(--danger)">*</span></label>
+            <input type="text" id="pid" placeholder="P1" maxlength="8" oninput="filterPID(this);vf(this,'pid')">
             <div class="field-err" id="e-pid"></div>
+            <div class="input-hint">Solo se aceptan números (la P se pone sola)</div>
           </div>
           <div class="input-group">
             <label title="Tiempo en que el proceso entra al sistema (ms). Rango: 0–100">Arrival (ms)</label>
-            <input type="number" id="arrival" placeholder="0" min="0" max="100" value="0" oninput="vf(this,'arrival')">
+            <input type="number" id="arrival" placeholder="0" min="0" max="100" value="0" onkeydown="blockNeg(event)" oninput="clampMin(this,0);vf(this,'arrival')">
             <div class="field-err" id="e-arrival"></div>
           </div>
           <div class="input-group">
             <label title="Tiempo total de ejecución en CPU (ms). Rango: 1–50">Burst (ms)</label>
-            <input type="number" id="burst" placeholder="5" min="1" max="50" value="5" oninput="vf(this,'burst')">
+            <input type="number" id="burst" placeholder="5" min="1" max="50" value="5" onkeydown="blockNeg(event)" oninput="clampMin(this,1);vf(this,'burst')">
             <div class="field-err" id="e-burst"></div>
           </div>
           <div class="input-group">
             <label title="1 = máxima prioridad, 10 = mínima prioridad">Priority</label>
-            <input type="number" id="priority" placeholder="2" min="1" max="10" value="2" oninput="vf(this,'priority')">
+            <input type="number" id="priority" placeholder="2" min="1" max="10" value="2" onkeydown="blockNeg(event)" oninput="clampMin(this,1);vf(this,'priority')">
             <div class="field-err" id="e-priority"></div>
           </div>
           <div class="input-group">
             <label title="Páginas de memoria que requiere el proceso. Rango: 1–20">Páginas</label>
-            <input type="number" id="pages" placeholder="3" min="1" max="20" value="3" oninput="vf(this,'pages')">
+            <input type="number" id="pages" placeholder="3" min="1" max="20" value="3" onkeydown="blockNeg(event)" oninput="clampMin(this,1);vf(this,'pages')">
             <div class="field-err" id="e-pages"></div>
           </div>
         </div>
@@ -900,8 +905,8 @@ h2 {
           <input type="file" id="fileIn" accept=".txt" style="display:none" onchange="loadTXT(event)">
           <button class="btn-secondary btn-xs" onclick="dlExample()">⬇ Ejemplo</button>
           <div class="txt-hint">
-            <span>Formato:</span> <code>P1,0,5,2,3</code>
-            <span style="font-size:0.6rem;">→ PID, Arrival, Burst, Priority, Páginas</span>
+            <span>Formato:</span> <code>1,0,5,2,3</code>
+            <span style="font-size:0.6rem;">→ Número (P se agrega sola), Arrival, Burst, Priority, Páginas</span>
           </div>
         </div>
       </div>
@@ -1005,7 +1010,7 @@ h2 {
         <div class="instr-step-title">Crear un proceso</div>
         <div class="instr-step-desc">
           Completa los campos del formulario y haz clic en <strong>+ Agregar</strong>:<br><br>
-          • <strong>PID</strong> — nombre único del proceso (ej. P1, Chrome, 101)<br>
+          • <strong>PID</strong> — identificador del proceso. Solo escribe el número (ej. <em>1</em> → se genera <em>P1</em>). Solo se aceptan números; letras y signos no están permitidos.<br>
           • <strong>Arrival</strong> — en qué unidad de tiempo llega al sistema (0–100 ms)<br>
           • <strong>Burst</strong> — cuánto tiempo de CPU necesita para terminar (1–50 ms)<br>
           • <strong>Priority</strong> — nivel de urgencia: <em>1 = alta prioridad</em>, 10 = baja<br>
@@ -1079,12 +1084,14 @@ h2 {
         <div class="instr-step-title">Cargar procesos desde archivo TXT</div>
         <div class="instr-step-desc">
           Presiona <strong>📂 TXT</strong> (o <strong>📄 Cargar TXT</strong>) y selecciona un archivo de texto. Cada línea define un proceso en formato CSV. Las líneas que comienzan con <em>#</em> son comentarios.<br><br>
-          Formato: <code style="font-family:var(--font-mono);background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:var(--accent);padding:1px 5px;border-radius:3px;font-size:.62rem;">PID, Arrival, Burst, Priority, Páginas</code><br>
+          Formato: <code style="font-family:var(--font-mono);background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:var(--accent);padding:1px 5px;border-radius:3px;font-size:.62rem;">Número, Arrival, Burst, Priority, Páginas</code><br>
+          En el campo PID <strong>solo se aceptan números</strong> — la <em>P</em> se agrega automáticamente (ej. <em>1</em> → <em>P1</em>).<br>
           <code class="instr-code"># OS Visual Lab — ejemplo de procesos
-P1,0,5,2,3
-P2,1,3,1,2
-P3,2,8,3,4
-P4,4,4,1,3</code>
+# PID: solo el número (la P se agrega sola)
+1,0,5,2,3
+2,1,3,1,2
+3,2,8,3,4
+4,4,4,1,3</code>
           Usa <strong>⬇ Ejemplo</strong> para descargar una plantilla lista para usar.
         </div>
       </div>
@@ -1149,8 +1156,9 @@ function vf(input, field) {
   const errEl = document.getElementById('e-' + field);
   let msg = '';
   if (field === 'pid') {
-    if (!input.value.trim())         msg = 'PID requerido';
-    else if (input.value.length > 8) msg = 'Máx 8 caracteres';
+    if (!input.value.trim())               msg = 'PID requerido';
+    else if (!/^P\d+$/.test(input.value))  msg = 'Formato: P seguido de número (ej. P1)';
+    else if (input.value.length > 8)       msg = 'Máx 8 caracteres';
   } else {
     const v = parseFloat(input.value);
     if (input.value === '' || isNaN(v)) msg = rule.msg + ' requerido';
@@ -1456,7 +1464,9 @@ function loadTXT(event) {
       if (!line || line.startsWith('#')) return;
       const parts = line.split(',');
       if (parts.length < 5) { errs++; return; }
-      const [pid, arrival, burst, priority, pages] = parts.map(s => s.trim());
+      let [pid, arrival, burst, priority, pages] = parts.map(s => s.trim());
+      const digits = pid.replace(/\D/g, '');
+      pid = digits ? 'P' + digits : '';
       const a=parseInt(arrival), b=parseInt(burst), pr=parseInt(priority), pg=parseInt(pages);
       if (!pid || processes.some(p=>p.pid===pid) || isNaN(a)||isNaN(b)||isNaN(pr)||isNaN(pg)) { errs++; return; }
       if (b<1||b>50||a<0||a>100||pr<1||pr>10||pg<1||pg>20) { errs++; return; }
@@ -1472,7 +1482,7 @@ function loadTXT(event) {
 }
 
 function dlExample() {
-  const c = '# Formato: PID,Arrival,Burst,Priority,Páginas\n# Rango: Arrival 0-100 | Burst 1-50 | Priority 1-10 | Páginas 1-20\nP1,0,5,2,3\nP2,1,3,1,2\nP3,2,8,3,4\nP4,4,4,1,3\nP5,5,6,2,5\n';
+  const c = '# Formato: Número,Arrival,Burst,Priority,Páginas\n# PID: solo el número (la P se agrega automáticamente — ej. 1 → P1)\n# Rango: Arrival 0-100 | Burst 1-50 | Priority 1-10 | Páginas 1-20\n1,0,5,2,3\n2,1,3,1,2\n3,2,8,3,4\n4,4,4,1,3\n5,5,6,2,5\n';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([c], { type:'text/plain' }));
   a.download = 'procesos_ejemplo.txt'; a.click();
@@ -1500,6 +1510,20 @@ function toast(msg, type='info') {
   el.textContent = msg;
   c.appendChild(el);
   setTimeout(() => el.remove(), 2600);
+}
+
+// ══════════════════════════════════════════════════════
+//  INPUT VALIDATION HELPERS
+// ══════════════════════════════════════════════════════
+function blockNeg(e) {
+  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+}
+function clampMin(el, min) {
+  if (el.value !== '' && +el.value < min) el.value = min;
+}
+function filterPID(el) {
+  const digits = el.value.replace(/\D/g, '');
+  el.value = digits ? 'P' + digits : '';
 }
 
 // ══════════════════════════════════════════════════════
